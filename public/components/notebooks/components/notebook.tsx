@@ -692,7 +692,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       dataSourceMDSId,
     };
     await this.props.http
-      .post(`/api/sql/${queryType}`, {
+      .post(`/api/notebook/sql/${queryType}`, {
         body: JSON.stringify(paragraph.output[0].result),
         ...(this.props.dataSourceEnabled && { query }),
       })

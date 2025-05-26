@@ -59,10 +59,10 @@ export class QueryService {
   };
 
   describeSQLQuery = async (context: any, request: any) => {
-    return this.describeQueryInternal(request, 'ppl.sqlQuery', 'json', context);
+    return this.describeQueryInternal(request, 'notebook.sqlQuery', 'json', context);
   };
 
   describePPLQuery = async (context: any, request: any) => {
-    return this.describeQueryInternal(request, 'ppl.pplQuery', 'json', context);
+    return this.describeQueryInternal(request, 'notebook.pplQuery', 'json', context);
   };
 }

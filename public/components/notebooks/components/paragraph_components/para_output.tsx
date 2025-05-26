@@ -14,8 +14,7 @@ import {
   DashboardStart,
 } from '../../../../../../../src/plugins/dashboard/public';
 import { ParaType } from '../../../../../common/types/notebooks';
-import { getOSDHttp, getPPLService, uiSettingsService } from '../../../../../common/utils';
-import { VisualizationContainer } from '../../../../components/custom_panels/panel_modules/visualization_container';
+import { uiSettingsService } from '../../../../../common/utils';
 import PPLService from '../../../../services/requests/ppl';
 import { QueryDataGridMemo } from './para_query_grid';
 
@@ -128,36 +127,6 @@ const OutputBody = ({
               input={visInput}
               onInputUpdated={setVisInput}
             />
-          </>
-        );
-      case 'OBSERVABILITY_VISUALIZATION':
-        let fromObs = moment(visInput?.timeRange?.from).format(dateFormat);
-        let toObs = moment(visInput?.timeRange?.to).format(dateFormat);
-        fromObs = fromObs === 'Invalid date' ? visInput.timeRange.from : fromObs;
-        toObs = toObs === 'Invalid date' ? visInput.timeRange.to : toObs;
-        const onEditClick = (savedVisualizationId: string) => {
-          window.location.assign(`observability-logs#/explorer/${savedVisualizationId}`);
-        };
-        return (
-          <>
-            <EuiText size="s" style={{ marginLeft: 9 }}>
-              {`${fromObs} - ${toObs}`}
-            </EuiText>
-            <div style={{ height: '300px', width: '100%' }}>
-              <VisualizationContainer
-                http={getOSDHttp()}
-                editMode={false}
-                visualizationId={''}
-                onEditClick={onEditClick}
-                savedVisualizationId={para.visSavedObjId}
-                pplService={getPPLService()}
-                fromTime={para.visStartTime}
-                toTime={para.visEndTime}
-                onRefresh={false}
-                pplFilterValue={''}
-                usedInNotebooks={true}
-              />
-            </div>
           </>
         );
       case 'HTML':

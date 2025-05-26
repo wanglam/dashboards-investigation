@@ -11,10 +11,10 @@ import {
 
 export const PPLPlugin = function (Client, config, components) {
   const ca = components.clientAction.factory;
-  Client.prototype.ppl = components.clientAction.namespaceFactory();
-  const ppl = Client.prototype.ppl.prototype;
+  Client.prototype.notebook = components.clientAction.namespaceFactory();
+  const notebook = Client.prototype.notebook.prototype;
 
-  ppl.pplQuery = ca({
+  notebook.pplQuery = ca({
     url: {
       fmt: `${PPL_ENDPOINT}`,
       params: {
@@ -28,7 +28,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'POST',
   });
 
-  ppl.sqlQuery = ca({
+  notebook.sqlQuery = ca({
     url: {
       fmt: `${SQL_ENDPOINT}`,
       params: {
@@ -42,7 +42,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'POST',
   });
 
-  ppl.getDataConnectionById = ca({
+  notebook.getDataConnectionById = ca({
     url: {
       fmt: `${OPENSEARCH_DATACONNECTIONS_API.DATACONNECTION}/<%=dataconnection%>`,
       req: {
@@ -55,7 +55,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'GET',
   });
 
-  ppl.deleteDataConnection = ca({
+  notebook.deleteDataConnection = ca({
     url: {
       fmt: `${OPENSEARCH_DATACONNECTIONS_API.DATACONNECTION}/<%=dataconnection%>`,
       req: {
@@ -68,7 +68,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'DELETE',
   });
 
-  ppl.createDataSource = ca({
+  notebook.createDataSource = ca({
     url: {
       fmt: `${OPENSEARCH_DATACONNECTIONS_API.DATACONNECTION}`,
     },
@@ -76,7 +76,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'POST',
   });
 
-  ppl.modifyDataConnection = ca({
+  notebook.modifyDataConnection = ca({
     url: {
       fmt: `${OPENSEARCH_DATACONNECTIONS_API.DATACONNECTION}`,
     },
@@ -84,7 +84,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'PATCH',
   });
 
-  ppl.getDataConnections = ca({
+  notebook.getDataConnections = ca({
     url: {
       fmt: `${OPENSEARCH_DATACONNECTIONS_API.DATACONNECTION}`,
     },

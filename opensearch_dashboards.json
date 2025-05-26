@@ -1,5 +1,5 @@
 {
-  "id": "observabilityDashboards",
+  "id": "notebook",
   "version": "3.1.0.0",
   "opensearchDashboardsVersion": "3.1.0",
   "server": true,
@@ -27,7 +27,7 @@
     "dataSourceManagement"
   ],
   "configPath": [
-    "observability"
+    "notebook"
   ],
   "supportedOSDataSourceVersions": ">=2.9.0",
   "requiredOSDataSourcePlugins": [

@@ -5,7 +5,6 @@
 
 import { PluginInitializerContext } from '../../../src/core/public';
 import './components/notebooks/index.scss';
-import './components/trace_analytics/index.scss';
 import { ObservabilityPlugin } from './plugin';
 import './variables.scss';
 

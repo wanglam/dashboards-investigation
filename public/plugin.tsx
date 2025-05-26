@@ -30,9 +30,6 @@ import {
   setPPLService,
   uiSettingsService,
 } from '../common/utils';
-import { registerAsssitantDependencies } from './dependencies/register_assistant';
-import { OBSERVABILITY_EMBEDDABLE } from './embeddable/observability_embeddable';
-import { ObservabilityEmbeddableFactoryDefinition } from './embeddable/observability_embeddable_factory';
 import { coreRefs } from './framework/core_refs';
 import { registerAllPluginNavGroups } from './plugin_helpers/plugin_nav';
 import DSLService from './services/requests/dsl';
@@ -147,15 +144,6 @@ export class ObservabilityPlugin
     });
 
     registerAllPluginNavGroups(core);
-
-    const embeddableFactory = new ObservabilityEmbeddableFactoryDefinition(async () => ({
-      getAttributeService: (await core.getStartServices())[1].dashboard.getAttributeService,
-      savedObjectsClient: (await core.getStartServices())[0].savedObjects.client,
-      overlays: (await core.getStartServices())[0].overlays,
-    }));
-    setupDeps.embeddable.registerEmbeddableFactory(OBSERVABILITY_EMBEDDABLE, embeddableFactory);
-
-    registerAsssitantDependencies(setupDeps.assistantDashboards);
 
     // Return methods that should be available to other plugins
     return {};

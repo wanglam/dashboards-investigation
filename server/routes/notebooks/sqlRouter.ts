@@ -18,7 +18,7 @@ export function registerSqlRoute(
 ) {
   server.post(
     {
-      path: '/api/sql/sqlquery',
+      path: '/api/notebook/sql/sqlquery',
       validate: {
         body: schema.any(),
         query: schema.object({
@@ -40,7 +40,7 @@ export function registerSqlRoute(
 
   server.post(
     {
-      path: '/api/sql/pplquery',
+      path: '/api/notebook/sql/pplquery',
       validate: {
         body: schema.any(),
         query: schema.object({
