@@ -15,7 +15,6 @@ import { AppPluginStartDependencies } from '../types';
 import { Home as ApplicationAnalyticsHome } from './application_analytics/home';
 import { MetricsListener } from './common/metrics_listener';
 import { Home as CustomPanelsHome } from './custom_panels/home';
-import { Home as DataConnectionsHome } from './datasources/home';
 import { EventAnalytics } from './event_analytics';
 import { Home as IntegrationsHome } from './integrations/home';
 import { Home as MetricsHome } from './metrics/index';
@@ -53,7 +52,6 @@ const pages = {
   notebooks: NotebooksHome,
   dashboards: CustomPanelsHome,
   integrations: IntegrationsHome,
-  dataconnections: DataConnectionsHome,
   gettingStarted: GettingStartedHome,
   overview: OverviewHome,
 };
@@ -67,7 +65,6 @@ export const App = ({
   timestampUtils,
   queryManager,
   startPage,
-  dataSourcePluggables,
   dataSourceManagement,
   setActionMenu,
   dataSourceEnabled,
@@ -103,7 +100,6 @@ export const App = ({
             parentBreadcrumb={parentBreadcrumb}
             parentBreadcrumbs={[parentBreadcrumb]}
             setBreadcrumbs={chrome.setBreadcrumbs}
-            dataSourcePluggables={dataSourcePluggables}
             dataSourceManagement={dataSourceManagement}
             dataSourceEnabled={dataSourceEnabled}
             setActionMenu={setActionMenu}
