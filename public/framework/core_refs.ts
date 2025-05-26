@@ -36,7 +36,7 @@ class CoreRefs {
   public dashboard?: DashboardStart;
   public dashboardProviders?: unknown;
   public overlays?: OverlayStart;
-  public dataSource?: DataSourcePluginStart;
+  public dataSources?: DataSourcePluginStart;
   public navigation?: NavigationPublicPluginStart;
   public contentManagement?: ContentManagementPluginStart;
   public workspaces?: WorkspacesStart;

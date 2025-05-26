@@ -16,13 +16,7 @@ import { ManagementOverViewPluginSetup } from '../../../src/plugins/management_o
 import { NavigationPublicPluginStart } from '../../../src/plugins/navigation/public';
 import { UiActionsStart } from '../../../src/plugins/ui_actions/public';
 import { VisualizationsSetup } from '../../../src/plugins/visualizations/public';
-import {
-  LoadCachehookOutput,
-  RenderAccelerationDetailsFlyoutParams,
-  RenderAccelerationFlyoutParams,
-  RenderAssociatedObjectsDetailsFlyoutParams,
-} from '../common/types/data_connections';
-import { CatalogCacheManager } from './framework/catalog_cache/cache_manager';
+import { LoadCachehookOutput } from '../common/types/data_connections';
 import { AssistantSetup } from './types';
 import {
   ContentManagementPluginSetup,
@@ -55,33 +49,9 @@ export interface SetupDependencies {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface ObservabilitySetup {}
 
-export interface ObservabilityStart {
-  renderAccelerationDetailsFlyout: ({
-    acceleration,
-    dataSourceName,
-    handleRefresh,
-    dataSourceMDSId,
-  }: RenderAccelerationDetailsFlyoutParams) => void;
-  renderAssociatedObjectsDetailsFlyout: ({
-    tableDetail,
-    dataSourceName,
-    handleRefresh,
-  }: RenderAssociatedObjectsDetailsFlyoutParams) => void;
-  renderCreateAccelerationFlyout: ({
-    dataSource,
-    dataSourceMDSId,
-    databaseName,
-    tableName,
-    handleRefresh,
-  }: RenderAccelerationFlyoutParams) => void;
-  CatalogCacheManagerInstance: typeof CatalogCacheManager;
-  useLoadDatabasesToCacheHook: () => LoadCachehookOutput;
-  useLoadTablesToCacheHook: () => LoadCachehookOutput;
-  useLoadTableColumnsToCacheHook: () => LoadCachehookOutput;
-  useLoadAccelerationsToCacheHook: () => LoadCachehookOutput;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface ObservabilityStart {}
 
-export type CatalogCacheManagerType = typeof CatalogCacheManager;
 export type LoadCachehookOutputType = LoadCachehookOutput;
 
 /**
