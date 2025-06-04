@@ -24,7 +24,7 @@ export function fetchNotebooks(savedObjectNotebooks: []) {
   return notebooks;
 }
 
-export function createNotebook(notebookName: { name: string }) {
+export function createNotebook(notebookName: { name: string; context?: any }) {
   const noteObject = {
     dateCreated: new Date().toISOString(),
     name: notebookName.name,
@@ -32,6 +32,7 @@ export function createNotebook(notebookName: { name: string }) {
     backend: '.kibana_1.0',
     paragraphs: [],
     path: notebookName.name,
+    context: notebookName?.context ?? undefined,
   };
 
   return {

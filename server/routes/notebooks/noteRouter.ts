@@ -60,6 +60,7 @@ export function registerNoteRoute(router: IRouter) {
       validate: {
         body: schema.object({
           name: schema.string(),
+          context: schema.any(),
         }),
       },
     },

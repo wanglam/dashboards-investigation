@@ -56,6 +56,7 @@ import {
   generateInContextReport,
 } from './helpers/reporting_context_menu_helper';
 import { Paragraphs } from './paragraph_components/paragraphs';
+import { ContextPanel } from './context_panel';
 
 const newNavigation = coreRefs.chrome?.navGroup.getNavGroupEnabled();
 
@@ -114,6 +115,7 @@ interface NotebookState {
   dataSourceMDSId: string | undefined | null;
   dataSourceMDSLabel: string | undefined | null;
   dataSourceMDSEnabled: boolean;
+  context: any;
 }
 export class Notebook extends Component<NotebookProps, NotebookState> {
   constructor(props: Readonly<NotebookProps>) {
@@ -140,6 +142,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       dataSourceMDSId: null,
       dataSourceMDSLabel: null,
       dataSourceMDSEnabled: false,
+      context: undefined,
     };
   }
 
@@ -1191,6 +1194,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
                 </EuiFlexGroup>
               </EuiFlexItem>
             </EuiFlexGroup>
+            <ContextPanel context={this.state.context} />
             {this.state.parsedPara.length > 0 ? (
               <>
                 {this.state.parsedPara.map((para: ParaType, index: number) => (
