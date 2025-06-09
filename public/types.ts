@@ -22,6 +22,7 @@ import {
   ContentManagementPluginSetup,
   ContentManagementPluginStart,
 } from '../../../src/plugins/content_management/public/types';
+import { ExpressionsStart } from '../../../src/plugins/expressions/public';
 
 export interface AppPluginStartDependencies {
   navigation: NavigationPublicPluginStart;
@@ -32,6 +33,7 @@ export interface AppPluginStartDependencies {
   securityDashboards?: {};
   dataSource: DataSourcePluginStart;
   contentManagement?: ContentManagementPluginStart;
+  expressions: ExpressionsStart;
 }
 
 export interface SetupDependencies {

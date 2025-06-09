@@ -44,6 +44,8 @@ import {
 } from './types';
 
 import './index.scss';
+import { BubbleUpEmbeddableFactory } from './components/notebooks/components/bubbleup/embeddable/BubbleUpEmbeddableFactory';
+import { setData, setEmbeddable, setExpressions, setSearch } from './services';
 
 interface PublicConfig {
   query_assist: {
@@ -145,6 +147,8 @@ export class ObservabilityPlugin
 
     registerAllPluginNavGroups(core);
 
+    setupDeps.embeddable.registerEmbeddableFactory('vega_visualization', new BubbleUpEmbeddableFactory());
+
     // Return methods that should be available to other plugins
     return {};
   }
@@ -170,6 +174,11 @@ export class ObservabilityPlugin
     coreRefs.navigation = startDeps.navigation;
     coreRefs.contentManagement = startDeps.contentManagement;
     coreRefs.workspaces = core.workspaces;
+
+    setExpressions(startDeps.expressions);
+    setData(startDeps.data);
+    setEmbeddable(startDeps.embeddable);
+    setSearch(startDeps.data.search);
 
     // Export so other plugins can use this flyout
     return {};
