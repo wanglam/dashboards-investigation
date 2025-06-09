@@ -53,8 +53,6 @@ class BubbleUpDataDistributionService {
                 dataSourceId: dataSourceId,
                 params: params
             }, {}));
-            console.log('123', response);
-
             return response.rawResponse.hits.hits.map(hit => hit._source);
         } catch (error) {
             console.error('Error fetching index data:', error);
@@ -223,8 +221,6 @@ class BubbleUpDataDistributionService {
             fieldValueSets[field] = new Set();
         });
 
-        console.log('combineData', combineData);
-
         combineData.forEach(doc => {
             normalizedFields.forEach(field => {
                 const value = getFlattenedObject(doc)?.[field];
@@ -236,8 +232,13 @@ class BubbleUpDataDistributionService {
 
         const usefulFields = normalizedFields.filter(field => {
             const cardinality = fieldValueSets[field]?.size || 0;
+            if(/id$/i.test(field)) {
+                return cardinality <= 30 && cardinality > 0;
+            }
             return cardinality <= maxCardinality && cardinality > 0
         });
+
+        console.log('usefulFields', usefulFields);
 
         return usefulFields;
     }

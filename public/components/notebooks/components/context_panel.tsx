@@ -70,6 +70,7 @@ export const ContextPanel = ({ context}: ContextPanelProps) => {
       const difference = service.analyzeDifferences(response, discoverFields);
       const summary = service.formatComparisonSummary(difference);
       const specs = generateAllFieldCharts(summary);
+      console.log('specs', specs);
       setBubbleUpSpecs(specs);
     } catch (error) {
       console.log(error);
