@@ -77,7 +77,8 @@ export class BubbleUpEmbeddable extends Embeddable<
    * Build expression for the visualization, it only supports vega type visualization now
    */
   private buildPipeline = async () => {
-    return `vega spec='${JSON.stringify(this.visInput?.spec)}'`;
+    const jsonString = JSON.stringify(this.visInput?.spec).replace(/'/g, "\\u0027");
+    return `vega spec='${jsonString}'`;
   };
 
   private dirtyCheck() {
@@ -101,6 +102,7 @@ export class BubbleUpEmbeddable extends Embeddable<
     this.abortController = new AbortController();
     const abortController = this.abortController;
     const expression = await this.buildPipeline();
+    console.log('expression', expression);
 
     if (this.handler && !abortController.signal.aborted) {
       this.handler.update(expression, expressionParams);
@@ -154,6 +156,8 @@ export class BubbleUpEmbeddable extends Embeddable<
       this.subscriptions.push(this.handler.loading$.subscribe(this.onContainerLoading));
       this.subscriptions.push(this.handler.render$.subscribe(this.onContainerRender));
     }
+
+    console.log('render');
 
     this.updateHandler();
   }
