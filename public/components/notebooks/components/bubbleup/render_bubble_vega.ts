@@ -44,7 +44,7 @@ function generateFieldBarChartSpec(fieldData) {
         params: [
             {
                 name: "highlight",
-                select: { type: "point", on: "mouseover", clear: "mouseout", nearest: "true", fields: ["value"] }
+                select: { type: "point", on: "mouseover", clear: "mouseout", nearest: true, "encodings": ["x"], fields: ["value"] }
             }
         ],
         mark: "bar",
