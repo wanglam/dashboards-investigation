@@ -9,6 +9,7 @@ import { registerNoteRoute } from './notebooks/noteRouter';
 import { registerParaRoute } from './notebooks/paraRouter';
 import { registerSqlRoute } from './notebooks/sqlRouter';
 import { registerVizRoute } from './notebooks/vizRouter';
+import { registerMLCommonsRoutes } from './ml_commons/routes';
 
 export function setupRoutes({
   router,
@@ -28,4 +29,5 @@ export function setupRoutes({
 
   const queryService = new QueryService(client, logger);
   registerSqlRoute(router, queryService, dataSourceEnabled);
+  registerMLCommonsRoutes(router);
 }

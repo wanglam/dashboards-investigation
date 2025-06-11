@@ -23,7 +23,7 @@ import {
 } from '@elastic/eui';
 import filter from 'lodash/filter';
 import moment from 'moment';
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   CoreStart,
   MountPoint,
@@ -51,6 +51,7 @@ import { SavedObjectsActions } from '../../../../services/saved_objects/saved_ob
 import { ObservabilitySavedVisualization } from '../../../../services/saved_objects/saved_object_client/types';
 import { ParaInput } from './para_input';
 import { ParaOutput } from './para_output';
+import { AgentsSelector } from './agents_selector';
 
 /*
  * "Paragraphs" component is used to render cells of the notebook open and "add para div" between paragraphs
@@ -103,7 +104,8 @@ interface ParagraphProps {
     index: number,
     vizObjectInput?: string,
     paraType?: string,
-    dataSourceMDSId?: string
+    dataSourceMDSId?: string,
+    deepResearchAgentId?: string
   ) => void;
   clonePara: (para: ParaType, index: number) => void;
   movePara: (index: number, targetIndex: number) => void;
@@ -153,6 +155,14 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   const [visInput, setVisInput] = useState(undefined);
   const [visType, setVisType] = useState('');
   const [dataSourceMDSId, setDataSourceMDSId] = useState('');
+  const shouldSkipAgentIdResetRef = useRef(true);
+  const [deepResearchAgentId, setDeepResearchAgentId] = useState<string | undefined>(() => {
+    try {
+      return JSON.parse(para.out[0]).agent_id;
+    } catch (e) {
+      console.error('Failed to read deep research agent id:', e);
+    }
+  });
 
   // output is available if it's not cleared and vis paragraph has a selected visualization
   const isOutputAvailable =
@@ -303,7 +313,14 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
       newVisObjectInput = JSON.stringify(inputTemp);
     }
     setRunParaError(false);
-    return props.runPara(para, index, newVisObjectInput, visType, dataSourceMDSId);
+    return props.runPara(
+      para,
+      index,
+      newVisObjectInput,
+      visType,
+      dataSourceMDSId,
+      deepResearchAgentId
+    );
   };
 
   const setStartTime = (time: string) => {
@@ -428,6 +445,13 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
               props.addPara(idx, '', 'VISUALIZATION');
             },
           },
+          {
+            name: 'Deep Research',
+            onClick: () => {
+              setIsPopoverOpen(false);
+              props.addPara(idx, '', 'DEEP_RESEARCH');
+            },
+          },
         ],
       },
       {
@@ -446,6 +470,13 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
             onClick: () => {
               setIsPopoverOpen(false);
               props.addPara(idx + 1, '', 'VISUALIZATION');
+            },
+          },
+          {
+            name: 'Deep Research',
+            onClick: () => {
+              setIsPopoverOpen(false);
+              props.addPara(idx + 1, '', 'DEEP_RESEARCH');
             },
           },
         ],
@@ -585,6 +616,13 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   const onSelectedDataSource = (e) => {
     const dataConnectionId = e[0] ? e[0].id : undefined;
     const dataConnectionLabel = e[0] ? e[0].label : undefined;
+    if (dataConnectionId !== paradataSourceMDSId) {
+      shouldSkipAgentIdResetRef.current = false;
+    }
+    if (!shouldSkipAgentIdResetRef.current) {
+      setDeepResearchAgentId(undefined);
+    }
+    shouldSkipAgentIdResetRef.current = false;
     setDataSourceMDSId(dataConnectionId);
     handleSelectedDataSourceChange(dataConnectionId, dataConnectionLabel);
   };
@@ -592,25 +630,47 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   if (dataSourceEnabled) {
     DataSourceSelector = dataSourceManagement.ui.DataSourceSelector;
   }
+
   return (
     <>
       <EuiPanel>
-        {renderParaHeader(!para.isVizualisation ? 'Code block' : 'Visualization', index)}
+        {renderParaHeader(
+          para.isDeepResearch
+            ? 'Deep Research'
+            : !para.isVizualisation
+            ? 'Code block'
+            : 'Visualization',
+          index
+        )}
         {dataSourceEnabled && !para.isVizualisation && (
-          <DataSourceSelector
-            savedObjectsClient={savedObjectsMDSClient.client}
-            notifications={notifications}
-            onSelectedDataSource={onSelectedDataSource}
-            disabled={false}
-            fullWidth={false}
-            removePrepend={false}
-            defaultOption={
-              paradataSourceMDSId !== undefined && [
-                { id: paradataSourceMDSId, label: dataSourceMDSLabel },
-              ]
-            }
-            dataSourceFilter={dataSourceFilterFn}
-          />
+          <EuiFlexGroup>
+            <EuiFlexItem>
+              <DataSourceSelector
+                savedObjectsClient={savedObjectsMDSClient.client}
+                notifications={notifications}
+                onSelectedDataSource={onSelectedDataSource}
+                disabled={false}
+                fullWidth={false}
+                removePrepend={false}
+                defaultOption={
+                  paradataSourceMDSId !== undefined && [
+                    { id: paradataSourceMDSId, label: dataSourceMDSLabel },
+                  ]
+                }
+                dataSourceFilter={dataSourceFilterFn}
+              />
+            </EuiFlexItem>
+            {para.isDeepResearch && (
+              <EuiFlexItem>
+                <AgentsSelector
+                  http={http}
+                  value={deepResearchAgentId}
+                  dataSourceMDSId={dataSourceMDSId}
+                  onChange={setDeepResearchAgentId}
+                />
+              </EuiFlexItem>
+            )}
+          </EuiFlexGroup>
         )}
         <EuiSpacer size="s" />
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}

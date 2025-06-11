@@ -5,13 +5,14 @@
 
 import now from 'performance-now';
 import { v4 as uuid } from 'uuid';
-import { SavedObjectsClientContract } from '../../../../../src/core/server/types';
+import { SavedObjectsClientContract, SavedObject } from '../../../../../src/core/server/types';
 import { NOTEBOOK_SAVED_OBJECT } from '../../../common/types/observability_saved_object_attributes';
 import {
   DefaultOutput,
   DefaultParagraph,
 } from '../../common/helpers/notebooks/default_notebook_schema';
 import { formatNotRecognized, inputIsQuery } from '../../common/helpers/notebooks/query_helpers';
+import { OpenSearchClient } from '../../../../../src/core/server';
 
 export function createNotebook(paragraphInput: string, inputType: string) {
   try {
@@ -24,6 +25,9 @@ export function createNotebook(paragraphInput: string, inputType: string) {
     }
     if (paragraphInput.substring(0, 3) === '%sql' || paragraphInput.substring(0, 3) === '%ppl') {
       paragraphType = 'QUERY';
+    }
+    if (inputType === 'DEEP_RESEARCH') {
+      paragraphType = inputType;
     }
     const inputObject = {
       inputType: paragraphType,
@@ -143,8 +147,21 @@ export async function updateRunFetchParagraph(
     dataSourceMDSId: string | undefined;
     dataSourceMDSLabel: string | undefined;
   },
-  opensearchNotebooksClient: SavedObjectsClientContract
+  opensearchNotebooksClient: SavedObjectsClientContract,
+  transport: OpenSearchClient['transport'],
+  deepResearchAgentId: string | undefined
 ) {
+  if (!deepResearchAgentId) {
+    try {
+      const { body } = await transport.request({
+        method: 'GET',
+        path: '/_plugins/_ml/config/os_deep_research',
+      });
+      deepResearchAgentId = body.configuration.agent_id;
+    } catch (error) {
+      // Add error catch here..
+    }
+  }
   try {
     const notebookinfo = await fetchNotebook(params.noteId, opensearchNotebooksClient);
     const updatedInputParagraphs = updateParagraphs(
@@ -155,7 +172,13 @@ export async function updateRunFetchParagraph(
       params.dataSourceMDSId,
       params.dataSourceMDSLabel
     );
-    const updatedOutputParagraphs = await runParagraph(updatedInputParagraphs, params.paragraphId);
+    const updatedOutputParagraphs = await runParagraph(
+      updatedInputParagraphs,
+      params.paragraphId,
+      transport,
+      deepResearchAgentId,
+      notebookinfo
+    );
 
     const updateNotebook = {
       paragraphs: updatedOutputParagraphs,
@@ -178,7 +201,13 @@ export async function updateRunFetchParagraph(
   }
 }
 
-export function runParagraph(paragraphs: DefaultParagraph[], paragraphId: string) {
+export async function runParagraph(
+  paragraphs: DefaultParagraph[],
+  paragraphId: string,
+  transport: OpenSearchClient['transport'],
+  deepResearchAgentId: string | undefined,
+  notebookinfo: SavedObject<{ context?: string }>
+) {
   try {
     const updatedParagraphs = [];
     let index = 0;
@@ -224,6 +253,50 @@ export function runParagraph(paragraphs: DefaultParagraph[], paragraphId: string
             {
               outputType: 'OBSERVABILITY_VISUALIZATION',
               result: '',
+              execution_time: `${(now() - startTime).toFixed(3)} ms`,
+            },
+          ];
+        } else if (paragraphs[index].input.inputType === 'DEEP_RESEARCH') {
+          if (!deepResearchAgentId) {
+            throw new Error('No deep research agent id configured.');
+          }
+          updatedParagraph.dateModified = new Date().toISOString();
+          const { body } = await transport.request({
+            method: 'POST',
+            path: `/_plugins/_ml/agents/${deepResearchAgentId}/_execute`,
+            querystring: 'async=true',
+            body: {
+              parameters: {
+                ...(notebookinfo.attributes.savedNotebook?.context
+                  ? {
+                      system_prompt: `You are an expert data analyzer for OpenSearch working within an AI notebook application. When analyzing documents from OpenSearch dashboards, focus on extracting maximum value from whatever data is present in the document, regardless of its structure or type. Prioritize actionable insights that would help troubleshoot or optimize the system. Always provide comprehensive analysis identifying key components and relationships, highlight issues or anomalies, suggest potential root causes, recommend investigation paths using available identifiers, and propose relevant queries or visualizations.
+
+Analyze this OpenSearch document:
+
+<document>
+${notebookinfo.attributes.savedNotebook?.context.content}
+</document>
+
+Index pattern: ${notebookinfo.attributes.savedNotebook?.context.indexPatternTitle}
+Time range: ${notebookinfo.attributes.savedNotebook?.context.timeRange.from} to ${notebookinfo.attributes.savedNotebook?.context.timeRange.to}
+                        `.trim(),
+                    }
+                  : {}),
+                question: paragraphs[index].input.inputText,
+              },
+            },
+          });
+          const memoryId = body.response?.memory_id;
+          updatedParagraph.output = [
+            {
+              outputType: 'DEEP_RESEARCH',
+              result: JSON.stringify({
+                task_id: body.task_id,
+                memory_id: memoryId,
+                agent_id: deepResearchAgentId,
+                // TODO: Remove this on production
+                response: { memory_id: body.response?.memory_id },
+              }),
               execution_time: `${(now() - startTime).toFixed(3)} ms`,
             },
           ];

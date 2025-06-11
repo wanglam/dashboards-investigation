@@ -58,6 +58,8 @@ import {
 import { Paragraphs } from './paragraph_components/paragraphs';
 import { ContextPanel } from './context_panel';
 
+const ParagraphTypeDeepResearch = 'DEEP_RESEARCH';
+
 const newNavigation = coreRefs.chrome?.navGroup.getNavGroupEnabled();
 
 const panelStyles: CSS.Properties = {
@@ -523,7 +525,9 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
     para: ParaType,
     index: number,
     vizObjectInput?: string,
-    paraType?: string
+    paraType?: string,
+    _dataSourceMDSId?: string,
+    deepResearchAgentId?: string
   ) => {
     this.showParagraphRunning(index);
     if (vizObjectInput) {
@@ -537,6 +541,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       paragraphType: paraType || '',
       dataSourceMDSId: this.state.dataSourceMDSId || '',
       dataSourceMDSLabel: this.state.dataSourceMDSLabel || '',
+      deepResearchAgentId,
     };
     const isValid = isValidUUID(this.props.openedNoteId);
     const route = isValid
@@ -700,7 +705,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
         ...(this.props.dataSourceEnabled && { query }),
       })
       .then((response) => {
-        paragraph.output[0].result = response.data.resp;
+        paragraph.output[0].result = response.data.resp || JSON.stringify({ error: 'no response' });
         return paragraph;
       })
       .catch((err) => {
@@ -822,6 +827,14 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
             },
             'data-test-subj': 'AddVisualizationBlockBtn',
           },
+          {
+            name: 'Deep Research',
+            onClick: () => {
+              this.setState({ isAddParaPopoverOpen: false });
+              this.addPara(this.state.paragraphs.length, '', ParagraphTypeDeepResearch);
+            },
+            'data-test-subj': 'AddDeepSearchBlockBtn',
+          },
         ],
       },
     ];
@@ -908,6 +921,13 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
               this.addPara(0, '', 'VISUALIZATION');
             },
           },
+          {
+            name: 'DeepResearch',
+            onClick: () => {
+              this.setState({ isParaActionsPopoverOpen: false });
+              this.addPara(0, '', ParagraphTypeDeepResearch);
+            },
+          },
         ],
       },
       {
@@ -926,6 +946,13 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
             onClick: () => {
               this.setState({ isParaActionsPopoverOpen: false });
               this.addPara(this.state.paragraphs.length, '', 'VISUALIZATION');
+            },
+          },
+          {
+            name: 'DeepResearch',
+            onClick: () => {
+              this.setState({ isParaActionsPopoverOpen: false });
+              this.addPara(this.state.paragraphs.length, '', ParagraphTypeDeepResearch);
             },
           },
         ],
@@ -1305,6 +1332,21 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
                               style={{ marginBottom: 17 }}
                             >
                               Add visualization
+                            </EuiSmallButton>
+                          }
+                        />
+                      </EuiFlexItem>
+                      <EuiFlexItem grow={3}>
+                        <EuiCard
+                          icon={<EuiIcon size="xxl" type="inspect" />}
+                          title="Deep Research"
+                          description="Use deep research to analytics question."
+                          footer={
+                            <EuiSmallButton
+                              onClick={() => this.addPara(0, '', ParagraphTypeDeepResearch)}
+                              style={{ marginBottom: 17 }}
+                            >
+                              Add deep research
                             </EuiSmallButton>
                           }
                         />
