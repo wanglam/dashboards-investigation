@@ -66,6 +66,6 @@ export interface NotebookContext {
     to?: number;
   };
   source: NoteBookSource;
-  filter?: Array<Record<string, any>>; // For phase 1, we only support DSL filter
+  filters?: Array<Record<string, any>>; // For phase 1, we only support DSL filter
   summary?: string;
 }

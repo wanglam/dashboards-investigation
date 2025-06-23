@@ -88,7 +88,7 @@ class BubbleUpDataDistributionService {
     index: string;
     selectionStartTime: Date;
     selectionEndTime: Date;
-    selectionFilter?: NotebookContext['filter'];
+    selectionFilters?: NotebookContext['filters'];
     size?: number;
   }): Promise<{
     selection: Array<Record<string, any>>;
@@ -101,7 +101,7 @@ class BubbleUpDataDistributionService {
       selectionStartTime,
       selectionEndTime,
       size = 1000,
-      selectionFilter,
+      selectionFilters,
     } = props;
     const selectionDurationMs = selectionEndTime.getTime() - selectionStartTime.getTime();
     const baselineEndTime = new Date(selectionStartTime.getTime());
@@ -115,7 +115,7 @@ class BubbleUpDataDistributionService {
         selectionStartTime,
         selectionEndTime,
         size,
-        selectionFilter
+        selectionFilters
       ),
       this.fetchIndexData(timeField, dataSourceId, index, baselineStartTime, baselineEndTime, size),
     ]);

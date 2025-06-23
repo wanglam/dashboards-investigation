@@ -76,7 +76,7 @@ export const ContextPanel = () => {
         index: context.index,
         selectionStartTime: startTime,
         selectionEndTime: endTime,
-        selectionFilter: context.filter,
+        selectionFilters: context.filters,
       });
 
       const discoverFields = await service.discoverFields(
