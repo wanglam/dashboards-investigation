@@ -45,7 +45,14 @@ import {
 
 import './index.scss';
 import { BubbleUpEmbeddableFactory } from './components/notebooks/components/bubbleup/embeddable/BubbleUpEmbeddableFactory';
-import { setData, setEmbeddable, setExpressions, setSearch } from './services';
+import {
+  setCoreStart,
+  setData,
+  setDataSourceManagementSetup,
+  setEmbeddable,
+  setExpressions,
+  setSearch,
+} from './services';
 
 interface PublicConfig {
   query_assist: {
@@ -87,7 +94,6 @@ export class ObservabilityPlugin
   constructor(initializerContext: PluginInitializerContext) {
     this.config = initializerContext.config.get<PublicConfig>();
   }
-  private mdsFlagStatus: boolean = false;
 
   public setup(
     core: CoreSetup<AppPluginStartDependencies>,
@@ -147,7 +153,22 @@ export class ObservabilityPlugin
 
     registerAllPluginNavGroups(core);
 
-    setupDeps.embeddable.registerEmbeddableFactory('vega_visualization', new BubbleUpEmbeddableFactory());
+    setupDeps.embeddable.registerEmbeddableFactory(
+      'vega_visualization',
+      new BubbleUpEmbeddableFactory()
+    );
+
+    setDataSourceManagementSetup(
+      !!setupDeps.dataSourceManagement
+        ? {
+            enabled: true,
+            dataSourceManagement: setupDeps.dataSourceManagement,
+          }
+        : {
+            enabled: false,
+            dataSourceManagement: undefined,
+          }
+    );
 
     // Return methods that should be available to other plugins
     return {};
@@ -179,6 +200,7 @@ export class ObservabilityPlugin
     setData(startDeps.data);
     setEmbeddable(startDeps.embeddable);
     setSearch(startDeps.data.search);
+    setCoreStart(core);
 
     // Export so other plugins can use this flyout
     return {};

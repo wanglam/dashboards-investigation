@@ -52,3 +52,20 @@ export interface ParaType {
   dataSourceMDSId?: string;
   dataSourceMDSLabel?: string;
 }
+
+export enum NoteBookSource {
+  ALERTING = 'alert',
+}
+
+export interface NotebookContext {
+  dataSourceId?: string;
+  timeField: string;
+  index: string;
+  timeRange?: {
+    from: number;
+    to?: number;
+  };
+  source: NoteBookSource;
+  filter?: Array<Record<string, any>>; // For phase 1, we only support DSL filter
+  summary?: string;
+}

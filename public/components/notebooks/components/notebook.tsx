@@ -41,7 +41,7 @@ import { DashboardStart } from '../../../../../../src/plugins/dashboard/public';
 import { DataSourceManagementPluginSetup } from '../../../../../../src/plugins/data_source_management/public';
 import { CREATE_NOTE_MESSAGE, NOTEBOOKS_API_PREFIX } from '../../../../common/constants/notebooks';
 import { UI_DATE_FORMAT } from '../../../../common/constants/shared';
-import { ParaType } from '../../../../common/types/notebooks';
+import { NotebookContext, ParaType } from '../../../../common/types/notebooks';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 import { HeaderControlledComponentsWrapper } from '../../../../public/plugin_helpers/plugin_headerControl';
 import { coreRefs } from '../../../framework/core_refs';
@@ -57,6 +57,7 @@ import {
 } from './helpers/reporting_context_menu_helper';
 import { Paragraphs } from './paragraph_components/paragraphs';
 import { ContextPanel } from './context_panel';
+import { NotebookContextProvider } from '../context_provider/context_provider';
 
 const ParagraphTypeDeepResearch = 'DEEP_RESEARCH';
 
@@ -117,7 +118,7 @@ interface NotebookState {
   dataSourceMDSId: string | undefined | null;
   dataSourceMDSLabel: string | undefined | null;
   dataSourceMDSEnabled: boolean;
-  context: any;
+  context?: NotebookContext;
 }
 export class Notebook extends Component<NotebookProps, NotebookState> {
   constructor(props: Readonly<NotebookProps>) {
@@ -1154,215 +1155,217 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
     );
 
     return (
-      <>
-        <EuiPage>
-          <EuiPageBody component="div">
-            {notebookHeader}
-            {!this.state.savedObjectNotebook && (
-              <EuiFlexItem>
-                <EuiCallOut color="primary" iconType="iInCircle">
-                  Upgrade this notebook to take full advantage of the latest features
-                  <EuiSpacer size="s" />
-                  <EuiSmallButton
-                    data-test-subj="upgrade-notebook"
-                    onClick={() => this.showUpgradeModal()}
-                  >
-                    Upgrade Notebook
-                  </EuiSmallButton>
-                </EuiCallOut>
-              </EuiFlexItem>
-            )}
-            {!this.state.savedObjectNotebook && <EuiSpacer size="s" />}
-            <EuiFlexGroup gutterSize="s" justifyContent="spaceBetween" alignItems="center">
-              {this.state.parsedPara.length > 0 ? (
-                <EuiFlexItem grow={false}>
-                  <EuiButtonGroup
-                    buttonSize="s"
-                    options={viewOptions}
-                    idSelected={this.state.selectedViewId}
-                    onChange={(id) => {
-                      this.updateView(id);
-                    }}
-                    legend="notebook view buttons"
-                  />
+      <NotebookContextProvider contextInput={this.state.context}>
+        <>
+          <EuiPage>
+            <EuiPageBody component="div">
+              {notebookHeader}
+              {!this.state.savedObjectNotebook && (
+                <EuiFlexItem>
+                  <EuiCallOut color="primary" iconType="iInCircle">
+                    Upgrade this notebook to take full advantage of the latest features
+                    <EuiSpacer size="s" />
+                    <EuiSmallButton
+                      data-test-subj="upgrade-notebook"
+                      onClick={() => this.showUpgradeModal()}
+                    >
+                      Upgrade Notebook
+                    </EuiSmallButton>
+                  </EuiCallOut>
                 </EuiFlexItem>
-              ) : (
-                <EuiFlexItem />
               )}
-              <EuiFlexItem grow={false}>
-                <EuiFlexGroup gutterSize="s" alignItems="center">
-                  {this.state.savedObjectNotebook && renderParaActionButtons()}
-                  {this.state.savedObjectNotebook && (
-                    <EuiFlexItem grow={false}>
+              {!this.state.savedObjectNotebook && <EuiSpacer size="s" />}
+              <EuiFlexGroup gutterSize="s" justifyContent="spaceBetween" alignItems="center">
+                {this.state.parsedPara.length > 0 ? (
+                  <EuiFlexItem grow={false}>
+                    <EuiButtonGroup
+                      buttonSize="s"
+                      options={viewOptions}
+                      idSelected={this.state.selectedViewId}
+                      onChange={(id) => {
+                        this.updateView(id);
+                      }}
+                      legend="notebook view buttons"
+                    />
+                  </EuiFlexItem>
+                ) : (
+                  <EuiFlexItem />
+                )}
+                <EuiFlexItem grow={false}>
+                  <EuiFlexGroup gutterSize="s" alignItems="center">
+                    {this.state.savedObjectNotebook && renderParaActionButtons()}
+                    {this.state.savedObjectNotebook && (
+                      <EuiFlexItem grow={false}>
+                        <EuiPopover
+                          panelPaddingSize="none"
+                          button={
+                            <EuiSmallButton
+                              fill
+                              data-test-subj="notebook-paragraph-actions-button"
+                              iconType="arrowDown"
+                              iconSide="right"
+                              onClick={() =>
+                                this.setState({
+                                  isParaActionsPopoverOpen: !this.state.isParaActionsPopoverOpen,
+                                })
+                              }
+                            >
+                              Add paragraph
+                            </EuiSmallButton>
+                          }
+                          isOpen={this.state.isParaActionsPopoverOpen}
+                          closePopover={() => this.setState({ isParaActionsPopoverOpen: false })}
+                        >
+                          <EuiContextMenu initialPanelId={0} panels={paraActionsPanels} size="s" />
+                        </EuiPopover>
+                      </EuiFlexItem>
+                    )}
+                  </EuiFlexGroup>
+                </EuiFlexItem>
+              </EuiFlexGroup>
+              <ContextPanel />
+              {this.state.parsedPara.length > 0 ? (
+                <>
+                  {this.state.parsedPara.map((para: ParaType, index: number) => (
+                    <div
+                      ref={this.state.parsedPara[index].paraDivRef}
+                      key={`para_div_${para.uniqueId}`}
+                      style={panelStyles}
+                    >
+                      <Paragraphs
+                        ref={this.state.parsedPara[index].paraRef}
+                        pplService={this.props.pplService}
+                        para={para}
+                        setPara={(pr: ParaType) => this.setPara(pr, index)}
+                        dateModified={this.state.paragraphs[index]?.dateModified}
+                        index={index}
+                        paraCount={this.state.parsedPara.length}
+                        paragraphSelector={this.paragraphSelector}
+                        textValueEditor={this.textValueEditor}
+                        handleKeyPress={this.handleKeyPress}
+                        addPara={this.addPara}
+                        DashboardContainerByValueRenderer={
+                          this.props.DashboardContainerByValueRenderer
+                        }
+                        deleteVizualization={this.deleteVizualization}
+                        http={this.props.http}
+                        selectedViewId={this.state.selectedViewId}
+                        setSelectedViewId={this.updateView}
+                        deletePara={this.showDeleteParaModal}
+                        runPara={this.updateRunParagraph}
+                        clonePara={this.cloneParaButton}
+                        movePara={this.movePara}
+                        showQueryParagraphError={this.state.showQueryParagraphError}
+                        queryParagraphErrorMessage={this.state.queryParagraphErrorMessage}
+                        dataSourceManagement={this.props.dataSourceManagement}
+                        setActionMenu={this.props.setActionMenu}
+                        notifications={this.props.notifications}
+                        dataSourceEnabled={this.state.dataSourceMDSEnabled}
+                        savedObjectsMDSClient={this.props.savedObjectsMDSClient}
+                        handleSelectedDataSourceChange={this.handleSelectedDataSourceChange}
+                        paradataSourceMDSId={this.state.parsedPara[index].dataSourceMDSId}
+                        dataSourceMDSLabel={this.state.parsedPara[index].dataSourceMDSLabel}
+                      />
+                    </div>
+                  ))}
+                  {this.state.selectedViewId !== 'output_only' && this.state.savedObjectNotebook && (
+                    <>
+                      <EuiSpacer />
                       <EuiPopover
                         panelPaddingSize="none"
                         button={
                           <EuiSmallButton
-                            fill
-                            data-test-subj="notebook-paragraph-actions-button"
+                            data-test-subj="AddParagraphButton"
                             iconType="arrowDown"
                             iconSide="right"
-                            onClick={() =>
-                              this.setState({
-                                isParaActionsPopoverOpen: !this.state.isParaActionsPopoverOpen,
-                              })
-                            }
+                            onClick={() => this.setState({ isAddParaPopoverOpen: true })}
                           >
                             Add paragraph
                           </EuiSmallButton>
                         }
-                        isOpen={this.state.isParaActionsPopoverOpen}
-                        closePopover={() => this.setState({ isParaActionsPopoverOpen: false })}
+                        isOpen={this.state.isAddParaPopoverOpen}
+                        closePopover={() => this.setState({ isAddParaPopoverOpen: false })}
                       >
-                        <EuiContextMenu initialPanelId={0} panels={paraActionsPanels} size="s" />
+                        <EuiContextMenu initialPanelId={0} panels={addParaPanels} size="s" />
                       </EuiPopover>
-                    </EuiFlexItem>
+                    </>
                   )}
-                </EuiFlexGroup>
-              </EuiFlexItem>
-            </EuiFlexGroup>
-            <ContextPanel context={this.state.context} />
-            {this.state.parsedPara.length > 0 ? (
-              <>
-                {this.state.parsedPara.map((para: ParaType, index: number) => (
-                  <div
-                    ref={this.state.parsedPara[index].paraDivRef}
-                    key={`para_div_${para.uniqueId}`}
-                    style={panelStyles}
-                  >
-                    <Paragraphs
-                      ref={this.state.parsedPara[index].paraRef}
-                      pplService={this.props.pplService}
-                      para={para}
-                      setPara={(pr: ParaType) => this.setPara(pr, index)}
-                      dateModified={this.state.paragraphs[index]?.dateModified}
-                      index={index}
-                      paraCount={this.state.parsedPara.length}
-                      paragraphSelector={this.paragraphSelector}
-                      textValueEditor={this.textValueEditor}
-                      handleKeyPress={this.handleKeyPress}
-                      addPara={this.addPara}
-                      DashboardContainerByValueRenderer={
-                        this.props.DashboardContainerByValueRenderer
-                      }
-                      deleteVizualization={this.deleteVizualization}
-                      http={this.props.http}
-                      selectedViewId={this.state.selectedViewId}
-                      setSelectedViewId={this.updateView}
-                      deletePara={this.showDeleteParaModal}
-                      runPara={this.updateRunParagraph}
-                      clonePara={this.cloneParaButton}
-                      movePara={this.movePara}
-                      showQueryParagraphError={this.state.showQueryParagraphError}
-                      queryParagraphErrorMessage={this.state.queryParagraphErrorMessage}
-                      dataSourceManagement={this.props.dataSourceManagement}
-                      setActionMenu={this.props.setActionMenu}
-                      notifications={this.props.notifications}
-                      dataSourceEnabled={this.state.dataSourceMDSEnabled}
-                      savedObjectsMDSClient={this.props.savedObjectsMDSClient}
-                      handleSelectedDataSourceChange={this.handleSelectedDataSourceChange}
-                      paradataSourceMDSId={this.state.parsedPara[index].dataSourceMDSId}
-                      dataSourceMDSLabel={this.state.parsedPara[index].dataSourceMDSLabel}
-                    />
-                  </div>
-                ))}
-                {this.state.selectedViewId !== 'output_only' && this.state.savedObjectNotebook && (
-                  <>
-                    <EuiSpacer />
-                    <EuiPopover
-                      panelPaddingSize="none"
-                      button={
-                        <EuiSmallButton
-                          data-test-subj="AddParagraphButton"
-                          iconType="arrowDown"
-                          iconSide="right"
-                          onClick={() => this.setState({ isAddParaPopoverOpen: true })}
-                        >
-                          Add paragraph
-                        </EuiSmallButton>
-                      }
-                      isOpen={this.state.isAddParaPopoverOpen}
-                      closePopover={() => this.setState({ isAddParaPopoverOpen: false })}
-                    >
-                      <EuiContextMenu initialPanelId={0} panels={addParaPanels} size="s" />
-                    </EuiPopover>
-                  </>
-                )}
-              </>
-            ) : (
-              // show default paragraph if no paragraphs in this notebook
-              <div style={panelStyles}>
-                <EuiPanel>
-                  <EuiSpacer size="xxl" />
-                  <EuiText textAlign="center">
-                    <h2>No paragraphs</h2>
-                    <EuiText size="s">
-                      Add a paragraph to compose your document or story. Notebooks now support two
-                      types of input:
+                </>
+              ) : (
+                // show default paragraph if no paragraphs in this notebook
+                <div style={panelStyles}>
+                  <EuiPanel>
+                    <EuiSpacer size="xxl" />
+                    <EuiText textAlign="center">
+                      <h2>No paragraphs</h2>
+                      <EuiText size="s">
+                        Add a paragraph to compose your document or story. Notebooks now support two
+                        types of input:
+                      </EuiText>
                     </EuiText>
-                  </EuiText>
-                  <EuiSpacer size="xl" />
-                  {this.state.savedObjectNotebook && (
-                    <EuiFlexGroup justifyContent="spaceEvenly">
-                      <EuiFlexItem grow={2} />
-                      <EuiFlexItem grow={3}>
-                        <EuiCard
-                          icon={<EuiIcon size="xxl" type="editorCodeBlock" />}
-                          title="Code block"
-                          description="Write contents directly using markdown, SQL or PPL."
-                          footer={
-                            <EuiSmallButton
-                              data-test-subj="emptyNotebookAddCodeBlockBtn"
-                              onClick={() => this.addPara(0, '', 'CODE')}
-                              style={{ marginBottom: 17 }}
-                            >
-                              Add code block
-                            </EuiSmallButton>
-                          }
-                        />
-                      </EuiFlexItem>
-                      <EuiFlexItem grow={3}>
-                        <EuiCard
-                          icon={<EuiIcon size="xxl" type="visArea" />}
-                          title="Visualization"
-                          description="Import OpenSearch Dashboards or Observability visualizations to the notes."
-                          footer={
-                            <EuiSmallButton
-                              onClick={() => this.addPara(0, '', 'VISUALIZATION')}
-                              style={{ marginBottom: 17 }}
-                            >
-                              Add visualization
-                            </EuiSmallButton>
-                          }
-                        />
-                      </EuiFlexItem>
-                      <EuiFlexItem grow={3}>
-                        <EuiCard
-                          icon={<EuiIcon size="xxl" type="inspect" />}
-                          title="Deep Research"
-                          description="Use deep research to analytics question."
-                          footer={
-                            <EuiSmallButton
-                              onClick={() => this.addPara(0, '', ParagraphTypeDeepResearch)}
-                              style={{ marginBottom: 17 }}
-                            >
-                              Add deep research
-                            </EuiSmallButton>
-                          }
-                        />
-                      </EuiFlexItem>
-                      <EuiFlexItem grow={2} />
-                    </EuiFlexGroup>
-                  )}
-                  <EuiSpacer size="xxl" />
-                </EuiPanel>
-              </div>
-            )}
-            {showLoadingModal}
-          </EuiPageBody>
-        </EuiPage>
-        {this.state.isModalVisible && this.state.modalLayout}
-      </>
+                    <EuiSpacer size="xl" />
+                    {this.state.savedObjectNotebook && (
+                      <EuiFlexGroup justifyContent="spaceEvenly">
+                        <EuiFlexItem grow={2} />
+                        <EuiFlexItem grow={3}>
+                          <EuiCard
+                            icon={<EuiIcon size="xxl" type="editorCodeBlock" />}
+                            title="Code block"
+                            description="Write contents directly using markdown, SQL or PPL."
+                            footer={
+                              <EuiSmallButton
+                                data-test-subj="emptyNotebookAddCodeBlockBtn"
+                                onClick={() => this.addPara(0, '', 'CODE')}
+                                style={{ marginBottom: 17 }}
+                              >
+                                Add code block
+                              </EuiSmallButton>
+                            }
+                          />
+                        </EuiFlexItem>
+                        <EuiFlexItem grow={3}>
+                          <EuiCard
+                            icon={<EuiIcon size="xxl" type="visArea" />}
+                            title="Visualization"
+                            description="Import OpenSearch Dashboards or Observability visualizations to the notes."
+                            footer={
+                              <EuiSmallButton
+                                onClick={() => this.addPara(0, '', 'VISUALIZATION')}
+                                style={{ marginBottom: 17 }}
+                              >
+                                Add visualization
+                              </EuiSmallButton>
+                            }
+                          />
+                        </EuiFlexItem>
+                        <EuiFlexItem grow={3}>
+                          <EuiCard
+                            icon={<EuiIcon size="xxl" type="inspect" />}
+                            title="Deep Research"
+                            description="Use deep research to analytics question."
+                            footer={
+                              <EuiSmallButton
+                                onClick={() => this.addPara(0, '', ParagraphTypeDeepResearch)}
+                                style={{ marginBottom: 17 }}
+                              >
+                                Add deep research
+                              </EuiSmallButton>
+                            }
+                          />
+                        </EuiFlexItem>
+                        <EuiFlexItem grow={2} />
+                      </EuiFlexGroup>
+                    )}
+                    <EuiSpacer size="xxl" />
+                  </EuiPanel>
+                </div>
+              )}
+              {showLoadingModal}
+            </EuiPageBody>
+          </EuiPage>
+          {this.state.isModalVisible && this.state.modalLayout}
+        </>
+      </NotebookContextProvider>
     );
   }
 }

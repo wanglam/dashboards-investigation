@@ -14,34 +14,30 @@ import {
   EuiDatePickerRange,
   EuiMarkdownFormat,
   EuiSmallButton,
+  EuiSpacer,
 } from '@elastic/eui';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import moment from 'moment';
 import { BubbleUpModel } from './bubbleup/bubbleup_model';
 import { bubbleUpDataDistributionService } from './bubbleup/distribution_difference';
 import { generateAllFieldCharts } from './bubbleup/render_bubble_vega';
+import { NotebookReactContext } from '../context_provider/context_provider';
+import { getCoreStart, getDataSourceManagementSetup } from '../../../services';
 
-interface ContextPanelProps {
-  context: any; // TODO: add type information
-}
-
-export const ContextPanel = ({ context}: ContextPanelProps) => {
-  console.log('context', context);
-  const dataSourceOptions = [
-    { label: context?.dataSourceTitle ?? '', id: context?.dataSourceId ?? '' },
-  ];
-  const indexPatternOptions = [
-    { label: context?.indexPatternTitle ?? '', id: context?.indexPatternId ?? '' },
-  ];
+export const ContextPanel = () => {
+  const context = useContext(NotebookReactContext);
+  const coreStart = getCoreStart();
+  const dataSourceManagementSetup = getDataSourceManagementSetup();
 
   const [isBubbleUpModalVisible, setIsBubbleUpModalVisible] = useState(false);
-  const [bubbleUpSpecs, setBubbleUpSpecs] = useState<Object[]>([]);
+  const [bubbleUpSpecs, setBubbleUpSpecs] = useState<Array<Record<string, unknown>>>([]);
+  const [differenceState, setDifferenceState] = useState<Array<Record<string, unknown>>>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const closeModal = () => {
     setIsBubbleUpModalVisible(false);
     setIsLoading(false);
-  }
+  };
 
   const fetchBubbleData = useCallback(async () => {
     setIsLoading(true);
@@ -50,67 +46,105 @@ export const ContextPanel = ({ context}: ContextPanelProps) => {
     const service = bubbleUpDataDistributionService;
 
     let response: {
-      selection: Record<string, any>[];
-      baseline: Record<string, any>[];
+      selection: Array<Record<string, any>>;
+      baseline: Array<Record<string, any>>;
     };
 
+    if (!context) {
+      return;
+    }
+
     try {
-      if (context?.content) {
-        response = await service.fetchComparisonData2(context.timeField, context.dataSourceId, context.indexPatternTitle, JSON.parse(context.content), new Date(context.time))
-        console.log('response', response);
-      } else {
-        const endDate = new Date('2025-5-21');
-        endDate.setHours(16);
-        endDate.setMinutes(4);
-        endDate.setSeconds(12);
-        response = await service.fetchComparisonData(context.timeField, context.dataSourceId, context.indexPatternTitle, new Date(endDate.getTime() - 12 * 1000), endDate)
+      const endDate = new Date('2025-5-21');
+      endDate.setHours(16);
+      endDate.setMinutes(4);
+      endDate.setSeconds(12);
+      let startTime = new Date(endDate.getTime() - 12 * 1000);
+      let endTime = endDate;
+      if (context?.timeRange?.from) {
+        startTime = new Date(context.timeRange.from);
+        if (context.timeRange.to) {
+          endTime = new Date(context.timeRange.to);
+        } else {
+          endTime = new Date();
+        }
       }
 
-      const discoverFields = await service.discoverFields(response, context?.indexPatternId);
+      response = await service.fetchComparisonData({
+        timeField: context.timeField,
+        dataSourceId: context.dataSourceId,
+        index: context.index,
+        selectionStartTime: startTime,
+        selectionEndTime: endTime,
+        selectionFilter: context.filter,
+      });
+
+      const discoverFields = await service.discoverFields(
+        response,
+        context?.index,
+        context?.dataSourceId
+      );
       const difference = service.analyzeDifferences(response, discoverFields);
       const summary = service.formatComparisonSummary(difference);
       const specs = generateAllFieldCharts(summary);
       console.log('specs', specs);
       setBubbleUpSpecs(specs);
+      setDifferenceState(difference);
     } catch (error) {
       console.log(error);
     }
     setIsLoading(false);
   }, [context]);
 
+  if (!context) {
+    return null;
+  }
+
+  const DataSourceSelector =
+    dataSourceManagementSetup.enabled &&
+    dataSourceManagementSetup.dataSourceManagement.ui.DataSourceSelector;
+  const indexOptions = [{ label: context.index, id: context.index }];
+
   return (
     <>
+      <EuiSpacer />
       <EuiPanel>
         <EuiTitle>
           <h3>Global Context</h3>
         </EuiTitle>
         <EuiFlexGroup gutterSize="m" alignItems="center">
-          <EuiFlexItem>
-            <EuiComboBox
-              singleSelection={{ asPlainText: true }}
-              isDisabled={true}
-              prepend="Data source"
-              selectedOptions={dataSourceOptions}
-              options={dataSourceOptions}
-            />
-          </EuiFlexItem>
+          {DataSourceSelector ? (
+            <EuiFlexItem>
+              <DataSourceSelector
+                savedObjectsClient={coreStart.savedObjects.client}
+                disabled
+                notifications={coreStart.notifications.toasts}
+                onSelectedDataSource={() => {}}
+                fullWidth
+                defaultOption={[
+                  {
+                    id: context.dataSourceId || '',
+                  },
+                ]}
+              />
+            </EuiFlexItem>
+          ) : null}
           <EuiFlexItem>
             <EuiComboBox
               singleSelection={{ asPlainText: true }}
               isDisabled={true}
               prepend="Index"
-              options={indexPatternOptions}
-              selectedOptions={indexPatternOptions}
+              options={indexOptions}
+              selectedOptions={indexOptions}
             />
           </EuiFlexItem>
-
           <EuiFlexItem>
             <EuiDatePickerRange
               readOnly={true}
               startDateControl={
                 <EuiDatePicker
                   selected={moment(context?.timeRange?.from)}
-                  onChange={() => { }}
+                  onChange={() => {}}
                   aria-label="Start date"
                   showTimeSelect
                 />
@@ -118,7 +152,7 @@ export const ContextPanel = ({ context}: ContextPanelProps) => {
               endDateControl={
                 <EuiDatePicker
                   selected={moment(context?.timeRange?.to)}
-                  onChange={() => { }}
+                  onChange={() => {}}
                   aria-label="End date"
                   showTimeSelect
                 />
@@ -133,15 +167,25 @@ export const ContextPanel = ({ context}: ContextPanelProps) => {
               onClick={fetchBubbleData}
               isLoading={isLoading}
             >
-              bubble up
+              Analyze data
             </EuiSmallButton>
           </EuiFlexItem>
         </EuiFlexGroup>
-        <EuiCard title={context?.source}>
-          {context?.content && <EuiMarkdownFormat>{context?.content}</EuiMarkdownFormat>}
-        </EuiCard>
+        {context.summary ? (
+          <EuiCard title={context.source}>
+            {context.summary && <EuiMarkdownFormat>{context.summary}</EuiMarkdownFormat>}
+          </EuiCard>
+        ) : null}
       </EuiPanel>
-      {isBubbleUpModalVisible && <BubbleUpModel isLoading={isLoading} closeModal={closeModal} bubbleUpSpecs={bubbleUpSpecs} />}
+      {isBubbleUpModalVisible && (
+        <BubbleUpModel
+          isLoading={isLoading}
+          closeModal={closeModal}
+          differences={differenceState}
+          bubbleUpSpecs={bubbleUpSpecs}
+          context={context}
+        />
+      )}
     </>
   );
 };

@@ -44,7 +44,7 @@ export interface SetupDependencies {
   managementOverview?: ManagementOverViewPluginSetup;
   assistantDashboards?: AssistantSetup;
   dataSource: DataSourcePluginSetup;
-  dataSourceManagement: DataSourceManagementPluginSetup;
+  dataSourceManagement?: DataSourceManagementPluginSetup;
   contentManagement?: ContentManagementPluginSetup;
 }
 
