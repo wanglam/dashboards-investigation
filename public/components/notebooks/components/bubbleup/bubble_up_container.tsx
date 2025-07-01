@@ -4,7 +4,7 @@
  */
 
 import React, { useContext, useMemo, useState } from 'react';
-import { EuiEmptyPrompt, EuiFlexGrid, EuiFlexGroup, EuiFlexItem, EuiHorizontalRule, EuiLoadingLogo, EuiMarkdownFormat, EuiPagination, EuiSpacer, EuiTitle } from '@elastic/eui';
+import { EuiAccordion, EuiFlexGrid, EuiFlexGroup, EuiFlexItem, EuiMarkdownFormat, EuiPagination, EuiSpacer, EuiSteps } from '@elastic/eui';
 import { getEmbeddable } from '../../../../services';
 import { CoreStart } from '../../../../../../../src/core/public';
 import { ParaType } from '../../../../../common/types/notebooks';
@@ -16,6 +16,7 @@ import { useEffect } from 'react';
 import { bubbleUpDataDistributionService } from './distribution_difference';
 import { generateAllFieldCharts } from './render_bubble_vega';
 import { callOpenSearchCluster } from '../../../../plugin_helpers/plugin_proxy_call';
+import { EuiContainedStepProps } from '@elastic/eui/src/components/steps/steps';
 
 interface Props {
   http: CoreStart['http'];
@@ -192,55 +193,55 @@ export const BubbleUpContainer = ({ para, http, updateBubbleParagraph, updateNot
     };
   }, [bubbleUpSpecs, activePage]);
 
-  return (
-    <>
-      <div>
-        {specsLoading ? <EuiEmptyPrompt
-          icon={<EuiLoadingLogo logo="visPie" size="xl" />}
-          title={<h2>Loading Visualizations</h2>}
-        /> :
-          <>
-            <EuiTitle size="m">
-              <h2>Visualization ({bubbleUpSpecs?.length || 0})</h2>
-            </EuiTitle>
-            <EuiSpacer size="m" />
-            <EuiFlexGrid columns={4} >
-              {paginatedSpecs.map((spec, index) => (
-                <EuiFlexItem key={activePage * ITEMS_PER_PAGE + index} style={{ height: 300, width: 300 }}>
-                  {factory && spec && (
-                    <EmbeddableRenderer
-                      factory={factory}
-                      input={{
-                        id: `text2viz-${activePage * ITEMS_PER_PAGE + index}`,
-                        savedObjectId: '',
-                        visInput: { spec }
-                      }}
-                    />
-                  )}
-                </EuiFlexItem>
-              ))}
-            </EuiFlexGrid>
-            <EuiSpacer size="l" />
-            {totalPages > 1 && (
-              <EuiFlexGroup justifyContent="center">
-                <EuiFlexItem grow={false}>
-                  <EuiPagination
-                    pageCount={totalPages}
-                    activePage={activePage}
-                    onPageClick={setActivePage}
+
+  const steps: EuiContainedStepProps[] = [
+    {
+      title: 'Anomaly Visualization',
+      status: specsLoading ? 'loading' : 'complete',
+      children: !specsLoading && (
+        <EuiAccordion id="accordion1" buttonContent="Show the anomaly visualization" initialIsOpen={true} >
+          <EuiFlexGrid columns={4} >
+            {paginatedSpecs.map((spec, index) => (
+              <EuiFlexItem key={activePage * ITEMS_PER_PAGE + index} style={{ height: 300, width: 300 }}>
+                {factory && spec && (
+                  <EmbeddableRenderer
+                    factory={factory}
+                    input={{
+                      id: `text2viz-${activePage * ITEMS_PER_PAGE + index}`,
+                      savedObjectId: '',
+                      visInput: { spec }
+                    }}
                   />
-                </EuiFlexItem>
-              </EuiFlexGroup>
-            )}
-          </>
-        }
-      </div>
-      <EuiHorizontalRule />
-      {summaryLoading ? <EuiEmptyPrompt
-        icon={<EuiLoadingLogo logo="document" size="xl" />}
-        title={<h2>Loading Summary</h2>}
-      /> : <EuiMarkdownFormat>{summary}</EuiMarkdownFormat>}
-    </>
+                )}
+              </EuiFlexItem>
+            ))}
+          </EuiFlexGrid>
+          <EuiSpacer size="l" />
+          {totalPages > 1 && (
+            <EuiFlexGroup justifyContent="center">
+              <EuiFlexItem grow={false}>
+                <EuiPagination
+                  pageCount={totalPages}
+                  activePage={activePage}
+                  onPageClick={setActivePage}
+                />
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          )}
+        </EuiAccordion>
+      ),
+    },
+    {
+      title: 'Anomaly Summary',
+      status: specsLoading ? undefined : summaryLoading ? 'loading' : 'complete',
+      children: !summaryLoading &&(
+        summary && (<EuiAccordion id="accordion2" buttonContent="Show the anomaly summary" initialIsOpen={true} ><EuiMarkdownFormat>{summary}</EuiMarkdownFormat> </EuiAccordion>)
+      ),
+    },
+  ];
+
+  return (
+    <EuiSteps steps={steps}/>
   );
 }
 
