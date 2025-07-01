@@ -30,6 +30,9 @@ export function createNotebook(paragraphInput: string, inputType: string) {
     if (inputType === 'DEEP_RESEARCH') {
       paragraphType = inputType;
     }
+    if (inputType === 'ANOMALY_VISUALIZATION_ANALYSIS') {
+      paragraphType = inputType;
+    }
     const inputObject = {
       inputType: paragraphType,
       inputText: paragraphInput,

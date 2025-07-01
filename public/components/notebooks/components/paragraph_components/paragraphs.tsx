@@ -134,6 +134,8 @@ interface ParagraphProps {
   paradataSourceMDSId: string;
   dataSourceMDSLabel: string;
   paragraphs: ParaType[];
+  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>
+  updateNotebookContext: (newContext: any) => Promise<any>
 }
 
 export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
@@ -155,6 +157,8 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     handleSelectedDataSourceChange,
     paradataSourceMDSId,
     dataSourceMDSLabel,
+    updateBubbleParagraph,
+    updateNotebookContext
   } = props;
 
   const [visOptions, setVisOptions] = useState<EuiComboBoxOptionOption[]>([
@@ -192,7 +196,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   // output is available if it's not cleared and vis paragraph has a selected visualization
   const isOutputAvailable =
     (para.out.length > 0 && para.out[0] !== '') ||
-    (para.isVizualisation && para.typeOut.length > 0 && visInput !== undefined);
+    (para.isVizualisation && para.typeOut.length > 0 && visInput !== undefined) || para.isAnomalyVisualizationAnalysis;
 
   useImperativeHandle(ref, () => ({
     runParagraph() {
@@ -366,7 +370,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   };
 
   // do not show output if it is a visualization paragraph and visInput is not loaded yet
-  const paraOutput = (!para.isVizualisation || visInput) && (
+  const paraOutput = (!para.isVizualisation || visInput || para.isAnomalyVisualizationAnalysis) && (
     <ParaOutput
       http={http}
       pplService={pplService}
@@ -375,6 +379,8 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
       visInput={visInput}
       setVisInput={setVisInput}
       DashboardContainerByValueRenderer={DashboardContainerByValueRenderer}
+      updateBubbleParagraph={updateBubbleParagraph}
+      updateNotebookContext={updateNotebookContext}
     />
   );
 
@@ -675,14 +681,16 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     <>
       <EuiPanel>
         {renderParaHeader(
-          para.isDeepResearch
+          para.isAnomalyVisualizationAnalysis
+            ? 'Anomaly Visualization Analysis'
+            :para.isDeepResearch
             ? `Deep Research${deepResearchMemoryId ? ` (Memory ID: ${deepResearchMemoryId})` : ''}`
             : !para.isVizualisation
             ? 'Code block'
             : 'Visualization',
           index
         )}
-        {dataSourceEnabled && !para.isVizualisation && (
+        {dataSourceEnabled && !para.isVizualisation && !para.isAnomalyVisualizationAnalysis && (
           <EuiFlexGroup>
             <EuiFlexItem>
               <DataSourceSelector
@@ -728,7 +736,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
           className={paraClass}
           onClick={executeButtonDisabled ? undefined : () => paragraphSelector(index)}
         >
-          {para.isInputExpanded && (
+          {para.isInputExpanded && !para.isAnomalyVisualizationAnalysis && (
             <>
               <EuiSpacer size="s" />
               <EuiCompressedFormRow

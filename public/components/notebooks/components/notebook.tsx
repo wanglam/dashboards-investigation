@@ -404,9 +404,9 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
     this.props.http
       .delete(
         `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph/` +
-          this.props.openedNoteId +
-          '/' +
-          uniqueId
+        this.props.openedNoteId +
+        '/' +
+        uniqueId
       )
       .then((res) => {
         this.setState({ paragraphs: res.paragraphs });
@@ -529,6 +529,52 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
         console.error(err);
       });
   };
+
+  updateBubbleParagraph = async (
+    paraUniqueId: string,
+    result: string,
+  ) => {
+    try {
+      const response = await this.props.http.put(`${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph`, {
+        body: JSON.stringify({
+          noteId: this.props.openedNoteId,
+          paragraphId: paraUniqueId,
+          paragraphOutput: [
+            {
+              outputType: 'ANOMALY_VISUALIZATION_ANALYSIS',
+              result,
+            },
+          ],
+        }),
+      });
+      return response;
+    } catch (error) {
+      console.error('Failed to update bubble paragraph:', error);
+      throw error;
+    }
+  }
+
+  updateNotebookContext = async (newContext: any) => {
+  try {
+    const response = await this.props.http.put(`${NOTEBOOKS_API_PREFIX}/note/updateNotebookContext`, {
+      body: JSON.stringify({
+        notebookId: this.props.openedNoteId,
+        context: newContext,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update notebook context');
+    }
+    
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error updating notebook context:', error);
+    throw error;
+  }
+}
 
   private _registerDeepResearchParagraphUpdater = ({
     taskId,
@@ -1367,7 +1413,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
                   </EuiFlexGroup>
                 </EuiFlexItem>
               </EuiFlexGroup>
-              <ContextPanel />
+              <ContextPanel addPara={this.addPara} />
               {this.state.parsedPara.length > 0 ? (
                 <>
                   {this.state.parsedPara.map((para: ParaType, index: number) => (
@@ -1410,6 +1456,8 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
                         paradataSourceMDSId={this.state.parsedPara[index].dataSourceMDSId}
                         dataSourceMDSLabel={this.state.parsedPara[index].dataSourceMDSLabel}
                         paragraphs={this.state.parsedPara}
+                        updateBubbleParagraph={this.updateBubbleParagraph}
+                        updateNotebookContext={this.updateNotebookContext}
                       />
                     </div>
                   ))}

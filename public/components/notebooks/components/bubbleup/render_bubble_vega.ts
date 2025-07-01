@@ -97,8 +97,8 @@ function generateFieldBarChartSpec(fieldData) {
                 { field: "value", type: "nominal", title: "value" },
                 // { field: "count", type: "quantitative", title: "count" },
                 // { field: "total", type: "quantitative", title: "total" },
-                { field: "baselinePercentage", type: "quantitative", title: "Baseline", format: ".1%" },
-                { field: "SelectionPercentage", type: "quantitative", title: "Selection", format: ".1%" },
+                { field: "baselinePercentage", type: "quantitative", title: "Baseline", format: ".2%" },
+                { field: "SelectionPercentage", type: "quantitative", title: "Selection", format: ".2%" },
                 // { field: "type", type: "nominal", title: "type" }
             ]
         },

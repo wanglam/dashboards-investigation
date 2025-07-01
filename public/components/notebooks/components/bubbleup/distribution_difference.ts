@@ -9,16 +9,21 @@ import {
   DataPublicPluginStart,
   ISearchStart,
   OPENSEARCH_FIELD_TYPES,
+  OSD_FIELD_TYPES,
 } from '../../../../../../../src/plugins/data/public';
 import { getData, getSearch } from '../../../../services';
 
 class BubbleUpDataDistributionService {
   private readonly search: ISearchStart;
   private readonly data: DataPublicPluginStart;
+  private baseCount: number;
+  private selectCount: number;
 
   constructor() {
     this.data = getData();
     this.search = getSearch();
+    this.baseCount = 1;
+    this.selectCount = 1;
   }
 
   private async fetchIndexData(
@@ -40,7 +45,6 @@ class BubbleUpDataDistributionService {
               {
                 range: {
                   [timeField]: {
-                    // @timestamp
                     gte: startTime.toISOString(),
                     lte: endTime.toISOString(),
                     format: 'strict_date_optional_time',
@@ -120,6 +124,9 @@ class BubbleUpDataDistributionService {
       this.fetchIndexData(timeField, dataSourceId, index, baselineStartTime, baselineEndTime, size),
     ]);
 
+    this.baseCount = baselineData.length;
+    this.selectCount = selectionData.length;
+
     return {
       selection: selectionData,
       baseline: baselineData,
@@ -197,14 +204,19 @@ class BubbleUpDataDistributionService {
     const combineData = Object.values(data).flat();
     const fieldValueSets: Record<string, Set<any>> = {};
     const maxCardinality = Math.max(5, Math.floor(combineData.length / 4));
+    const numberFields: string[] = [];
 
     const mappings = await this.getFields(index, dataSourceId);
 
     const keywordFields = mappings
       .filter((field) => {
-        return (
-          field.esTypes && field.esTypes.includes(OPENSEARCH_FIELD_TYPES.KEYWORD) && field.name
-        );
+        if (field.esTypes && field.name && field.type) {
+          if (field.type.includes(OSD_FIELD_TYPES.NUMBER)) {
+            numberFields.push(field.name);
+            return true;
+          }
+          return field.esTypes.includes(OPENSEARCH_FIELD_TYPES.KEYWORD) || field.esTypes.includes(OPENSEARCH_FIELD_TYPES.BOOLEAN);
+        }
       })
       .map((field) => field.name);
 
@@ -231,6 +243,9 @@ class BubbleUpDataDistributionService {
       const cardinality = fieldValueSets[field]?.size || 0;
       if (/id$/i.test(field)) {
         return cardinality <= 30 && cardinality > 0;
+      }
+      if (numberFields.includes(field)) {
+        return true;
       }
       return cardinality <= maxCardinality && cardinality > 0;
     });
@@ -400,8 +415,11 @@ class BubbleUpDataDistributionService {
     const allKeys = [...new Set([...Object.keys(selectionDist), ...Object.keys(baselineDist)])];
 
     // Calculate the total count
-    const total1 = Object.values(selectionDist).reduce((sum, count) => sum + count, 0) || 1;
-    const total2 = Object.values(baselineDist).reduce((sum, count) => sum + count, 0) || 1;
+    // const total1 = Object.values(selectionDist).reduce((sum, count) => sum + count, 0) || 1;
+    // const total2 = Object.values(baselineDist).reduce((sum, count) => sum + count, 0) || 1;
+
+    const total1 = this.selectCount;
+    const total2 = this.baseCount;
 
     // Transfer count to probability
     const selectionDistProb: Record<string, number> = {};
@@ -484,9 +502,12 @@ class BubbleUpDataDistributionService {
 
       // Calculate the changes in all fields
       const allKeys = [...new Set([...Object.keys(selectionDist), ...Object.keys(baselineDist)])];
-      const selectionTotal =
-        Object.values(selectionDist).reduce((sum, count) => sum + count, 0) || 1;
-      const baselineTotal = Object.values(baselineDist).reduce((sum, count) => sum + count, 0) || 1;
+      // const selectionTotal =
+      // Object.values(selectionDist).reduce((sum, count) => sum + count, 0) || 1;
+      // const baselineTotal = Object.values(baselineDist).reduce((sum, count) => sum + count, 0) || 1;
+
+      const selectionTotal = this.selectCount;
+      const baselineTotal = this.baseCount;
 
       const changes = allKeys.map((value) => {
         const selectionCount = selectionDist[value] || 0;

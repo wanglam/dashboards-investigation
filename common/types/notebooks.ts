@@ -35,6 +35,7 @@ export interface ParaType {
   showAddPara: boolean;
   isVizualisation: boolean;
   isDeepResearch: boolean;
+  isAnomalyVisualizationAnalysis: boolean;
   vizObjectInput: string;
   id: number;
   inp: string;
@@ -63,9 +64,11 @@ export interface NotebookContext {
   index: string;
   timeRange?: {
     from: number;
-    to?: number;
+    to: number;
   };
   source: NoteBookSource;
   filters?: Array<Record<string, any>>; // For phase 1, we only support DSL filter
   summary?: string;
+  specs?: Array<Record<string, unknown>>;
+  updateSpecs?: (newSpecs: Array<Record<string, unknown>>) => void;
 }

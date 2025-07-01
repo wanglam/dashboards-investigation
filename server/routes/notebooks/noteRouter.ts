@@ -89,6 +89,58 @@ export function registerNoteRoute(router: IRouter) {
       }
     }
   );
+
+  router.put(
+  {
+    path: `${NOTEBOOKS_API_PREFIX}/note/updateNotebookContext`,
+    validate: {
+      body: schema.object({
+        notebookId: schema.string(),
+        context: schema.maybe(schema.any()),
+      }),
+    },
+  },
+  async (
+    context,
+    request,
+    response
+  ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+    const opensearchNotebooksClient: SavedObjectsClientContract =
+      context.core.savedObjects.client;
+    
+    try {
+      const { notebookId, context: newContext } = request.body;
+
+      const noteObject = {
+          context: newContext,
+          dateModified: new Date().toISOString(),
+      };
+      
+      const updatedNotebook = await opensearchNotebooksClient.update(
+        NOTEBOOK_SAVED_OBJECT,
+        notebookId,
+        {
+          savedNotebook: noteObject,
+        }
+      );
+      
+      return response.ok({
+        body: {
+          id: updatedNotebook.id,
+        },
+      });
+    } catch (error) {
+      return response.custom({
+        statusCode: error.statusCode || 500,
+        body: {
+          message: `Failed to update notebook context: ${error.message}`,
+          error: error.name
+        },
+      });
+    }
+  }
+);
+
   router.get(
     {
       path: `${NOTEBOOKS_API_PREFIX}/note/savedNotebook/{noteId}`,

@@ -102,7 +102,6 @@ export class BubbleUpEmbeddable extends Embeddable<
     this.abortController = new AbortController();
     const abortController = this.abortController;
     const expression = await this.buildPipeline();
-    console.log('expression', expression);
 
     if (this.handler && !abortController.signal.aborted) {
       this.handler.update(expression, expressionParams);
@@ -156,8 +155,6 @@ export class BubbleUpEmbeddable extends Embeddable<
       this.subscriptions.push(this.handler.loading$.subscribe(this.onContainerLoading));
       this.subscriptions.push(this.handler.render$.subscribe(this.onContainerRender));
     }
-
-    console.log('render');
 
     this.updateHandler();
   }

@@ -96,6 +96,7 @@ export const defaultParagraphParser = (defaultBackendParagraphs: any) => {
         showAddPara: false,
         isVizualisation: vizParams.isViz,
         isDeepResearch: paraObject.input.inputType.includes('DEEP_RESEARCH'),
+        isAnomalyVisualizationAnalysis: paraObject.input.inputType.includes('ANOMALY_VISUALIZATION_ANALYSIS'),
         vizObjectInput: vizParams.VizObject,
         id: index + 1,
         inp: paraObject.input.inputText || '',

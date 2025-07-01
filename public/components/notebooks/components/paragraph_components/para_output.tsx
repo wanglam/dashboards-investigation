@@ -18,6 +18,7 @@ import { uiSettingsService } from '../../../../../common/utils';
 import { DeepResearchContainer } from '../../../../components/custom_panels/panel_modules/deep_research_container';
 import PPLService from '../../../../services/requests/ppl';
 import { QueryDataGridMemo } from './para_query_grid';
+import { BubbleUpContainer } from '../bubbleup/bubble_up_container';
 
 const createQueryColumns = (jsonColumns: any[]) => {
   let index = 0;
@@ -62,6 +63,8 @@ const OutputBody = ({
   visInput,
   setVisInput,
   DashboardContainerByValueRenderer,
+  updateBubbleParagraph,
+  updateNotebookContext,
 }: {
   key: string;
   http: CoreStart['http'];
@@ -71,6 +74,8 @@ const OutputBody = ({
   visInput: DashboardContainerInput;
   setVisInput: (input: DashboardContainerInput) => void;
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
+  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
+  updateNotebookContext: (newContext: any) => Promise<any>;
 }) => {
   /* Returns a component to render paragraph outputs using the para.typeOut property
    * Currently supports HTML, TABLE, IMG
@@ -145,6 +150,8 @@ const OutputBody = ({
         return <img alt="" src={'data:image/gif;base64,' + val} key={key} />;
       case 'DEEP_RESEARCH':
         return <DeepResearchContainer http={http} para={para} onTaskFinish={() => {}} />;
+      case 'ANOMALY_VISUALIZATION_ANALYSIS':
+        return <BubbleUpContainer http={http} para={para} updateBubbleParagraph={updateBubbleParagraph} updateNotebookContext={updateNotebookContext} />;
       default:
         return <pre key={key}>{val}</pre>;
     }
@@ -170,8 +177,10 @@ export const ParaOutput = (props: {
   visInput: DashboardContainerInput;
   setVisInput: (input: DashboardContainerInput) => void;
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
+  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
+  updateNotebookContext: (newContext: any) => Promise<any>;
 }) => {
-  const { para, http, DashboardContainerByValueRenderer, visInput, setVisInput } = props;
+  const { para, http, DashboardContainerByValueRenderer, visInput, setVisInput, updateBubbleParagraph, updateNotebookContext } = props;
 
   return (
     !para.isOutputHidden && (
@@ -187,6 +196,8 @@ export const ParaOutput = (props: {
               setVisInput={setVisInput}
               DashboardContainerByValueRenderer={DashboardContainerByValueRenderer}
               http={http}
+              updateBubbleParagraph={updateBubbleParagraph}
+              updateNotebookContext={updateNotebookContext}
             />
           );
         })}

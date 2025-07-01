@@ -48,7 +48,7 @@ export const BubbleUpModel = (bubbleUpModelProps: BubbleUpModelProps) => {
       const result = await callOpenSearchCluster({
         http: getCoreStart().http,
         request: {
-          path: '/_plugins/_ml/models/EioggpcB6GVIpQ1tQ9p6/_predict',
+          path: '/_plugins/_ml/models/aKoOY5cB6yOFQkrFEbF9/_predict',
           method: 'POST',
           body: JSON.stringify({
             parameters: {
