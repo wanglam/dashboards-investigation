@@ -4,7 +4,7 @@ Using docker as the runtime environment for testing and validating new developme
 ## Build the plugin
 First the plugin must be build using the `yarn build` command.
 
-Once this build was completed - the expected zip location of the plugin is `./build/observabilityDashboards-?.?.?.zip` where as the `?.?.?` represents the version of this dashboard plugin.
+Once this build was completed - the expected zip location of the plugin is `./build/investigationDashboards-?.?.?.zip` where as the `?.?.?` represents the version of this dashboard plugin.
 
 > Note: that the plugin version must correspond to the OpenSearch-Dashboards version - this information appears [here](opensearch_dashboards.json)
 > 
@@ -12,7 +12,7 @@ Once this build was completed - the expected zip location of the plugin is `./bu
 Once the build is completed, make sure to overide the [Dockerfile](Dockerfile) target zip file with the exact name 
 ```
 # Install updated plugin
-RUN /usr/share/opensearch-dashboards/bin/opensearch-dashboards-plugin install file:///tmp/observabilityDashboards-3.0.0.zip
+RUN /usr/share/opensearch-dashboards/bin/opensearch-dashboards-plugin install file:///tmp/investigationDashboards-3.0.0.zip
 ```
 
 ## Docker imageVersion

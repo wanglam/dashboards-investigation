@@ -6,7 +6,7 @@ So you want to contribute code to this project? Excellent! We're glad you're her
 
 1. Git clone OpenSearch-Dashboard for the version that matches the version you want to use [OpenSearch-Dashboards](https://github.com/opensearch-project/OpenSearch-Dashboards)
 2. Change your node version to the version specified in `.node-version` inside the OpenSearch Dashboards root directory. (using [nvm](https://github.com/nvm-sh/nvm) can help for that)
-3. Change directory into `OpenSearch-Dashboards` and git Clone the [Observability-Dashboard](https://github.com/opensearch-project/dashboards-observability) into the `plugins/` directory.
+3. Change directory into `OpenSearch-Dashboards` and git Clone the [investigation-Dashboard](https://github.com/opensearch-project/dashboards-investigation) into the `plugins/` directory.
 4. Run `yarn osd bootstrap` inside `OpenSearch-Dashboards`.
 
 Ultimately, your directory structure should look like this:
@@ -15,14 +15,14 @@ Ultimately, your directory structure should look like this:
 .
 ├── OpenSearch-Dashboards
 │   └── plugins
-│       └── dashboards-observability
+│       └── dashboards-investigation
 ```
 
 ### Build
 
 To build the plugin's distributable zip simply run `yarn build`.
 
-The output file : `./build/observabilityDashboards-?.?.?.zip` (`?.?.?` stands for the version number)
+The output file : `./build/investigationDashboards-?.?.?.zip` (`?.?.?` stands for the version number)
 
 ### Run Directly
 

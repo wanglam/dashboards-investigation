@@ -38,8 +38,8 @@ jobs:
         id: setup-dashboards
         uses: derek-ho/setup-opensearch-dashboards@v2
         with:
-          plugin_name: dashboards-observability
-          built_plugin_name: observabilityDashboards
+          plugin_name: dashboards-investigation
+          built_plugin_name: investigationDashboards
           built_plugin_suffix: ${{ env.OPENSEARCH_VERSION }}
           install_zip: true
 

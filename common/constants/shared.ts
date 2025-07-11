@@ -74,7 +74,7 @@ export const observabilityServicesID = 'observability-services';
 export const observabilityServicesTitle = 'Services';
 export const observabilityServicesPluginOrder = 5092;
 
-export const observabilityNotebookID = 'observability-notebooks';
+export const observabilityNotebookID = 'investigation-notebooks';
 export const observabilityNotebookTitle = 'Notebooks';
 export const observabilityNotebookPluginOrder = 5094;
 

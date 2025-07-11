@@ -10,7 +10,6 @@ import {
   CoreSetup,
   CoreStart,
   Plugin,
-  PluginInitializerContext,
 } from '../../../src/core/public';
 import { createGetterSetter } from '../../../src/plugins/opensearch_dashboards_utils/public';
 import {
@@ -19,7 +18,6 @@ import {
   observabilityNotebookTitle,
   observabilityPluginOrder,
 } from '../common/constants/shared';
-import { QueryManager } from '../common/query_manager';
 import {
   RenderAccelerationDetailsFlyoutParams,
   RenderAssociatedObjectsDetailsFlyoutParams,
@@ -34,8 +32,6 @@ import { coreRefs } from './framework/core_refs';
 import { registerAllPluginNavGroups } from './plugin_helpers/plugin_nav';
 import DSLService from './services/requests/dsl';
 import PPLService from './services/requests/ppl';
-import SavedObjects from './services/saved_objects/event_analytics/saved_objects';
-import TimestampUtils from './services/timestamp/timestamp';
 import {
   AppPluginStartDependencies,
   ObservabilitySetup,
@@ -53,15 +49,6 @@ import {
   setExpressions,
   setSearch,
 } from './services';
-
-interface PublicConfig {
-  query_assist: {
-    enabled: boolean;
-  };
-  summarize: {
-    enabled: boolean;
-  };
-}
 
 export const [
   getRenderAccelerationDetailsFlyout,
@@ -90,18 +77,12 @@ export const [
 export class ObservabilityPlugin
   implements
     Plugin<ObservabilitySetup, ObservabilityStart, SetupDependencies, AppPluginStartDependencies> {
-  private config: PublicConfig;
-  constructor(initializerContext: PluginInitializerContext) {
-    this.config = initializerContext.config.get<PublicConfig>();
-  }
-
   public setup(
     core: CoreSetup<AppPluginStartDependencies>,
     setupDeps: SetupDependencies
   ): ObservabilitySetup {
     uiSettingsService.init(core.uiSettings, core.notifications);
     const pplService = new PPLService(core.http);
-    const qm = new QueryManager();
     setPPLService(pplService);
     setOSDHttp(core.http);
     core.getStartServices().then(([coreStart]) => {
@@ -118,28 +99,17 @@ export class ObservabilityPlugin
       },
     });
 
-    const appMountWithStartPage = (startPage: string, defaultRoute?: string) => async (
-      params: AppMountParameters
-    ) => {
+    const appMountWithStartPage = () => async (params: AppMountParameters) => {
       const { Observability } = await import('./components/index');
       const [coreStart, depsStart] = await core.getStartServices();
-      const dslService = new DSLService(coreStart.http);
-      const savedObjects = new SavedObjects(coreStart.http);
-      const timestampUtils = new TimestampUtils(dslService, pplService);
       const { dataSourceManagement } = setupDeps;
       return Observability(
         coreStart,
         depsStart as AppPluginStartDependencies,
         params,
         pplService,
-        dslService,
-        savedObjects,
-        timestampUtils,
-        qm,
-        startPage,
         dataSourceManagement,
-        coreStart.savedObjects,
-        defaultRoute
+        coreStart.savedObjects
       );
     };
 
@@ -148,7 +118,7 @@ export class ObservabilityPlugin
       title: observabilityNotebookTitle,
       category: OBSERVABILITY_APP_CATEGORIES.observability,
       order: observabilityNotebookPluginOrder,
-      mount: appMountWithStartPage('notebooks'),
+      mount: appMountWithStartPage(),
     });
 
     registerAllPluginNavGroups(core);
@@ -188,8 +158,6 @@ export class ObservabilityPlugin
     coreRefs.dataSources = startDeps.data;
     coreRefs.application = core.application;
     coreRefs.dashboard = startDeps.dashboard;
-    coreRefs.queryAssistEnabled = this.config.query_assist.enabled;
-    coreRefs.summarizeEnabled = this.config.summarize.enabled;
     coreRefs.overlays = core.overlays;
     coreRefs.dataSource = startDeps.dataSource;
     coreRefs.navigation = startDeps.navigation;

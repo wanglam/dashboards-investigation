@@ -6,7 +6,7 @@ permissions:
   pull-requests: write
 jobs:
   stale:
-    if: github.repository == 'opensearch-project/dashboards-observability'
+    if: github.repository == 'opensearch-project/dashboards-investigation'
     runs-on: ubuntu-latest
     steps:
       - name: GitHub App token

@@ -1,9 +1,9 @@
-name: FTR E2E Dashboards observability Test
+name: FTR E2E Dashboards investigation Test
 
 on: [pull_request, push]
 
 env:
-  PLUGIN_NAME: dashboards-observability
+  PLUGIN_NAME: dashboards-investigation
   OPENSEARCH_DASHBOARDS_VERSION: 'main'
   OPENSEARCH_VERSION: '3.0.0-beta1'
   OPENSEARCH_PLUGIN_VERSION: '3.0.0.0-beta1'
@@ -39,13 +39,6 @@ jobs:
           target: plugin-artifacts/
           filename: opensearch-job-scheduler.zip
 
-      - name: Download observability artifact
-        uses: suisei-cn/actions-download-file@v1.4.0
-        with:
-          url: https://aws.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=org.opensearch.plugin&a=opensearch-observability&v=${{ env.OPENSEARCH_PLUGIN_VERSION }}-SNAPSHOT&p=zip
-          target: plugin-artifacts/
-          filename: observability.zip
-
       - name: Download SQL artifact
         uses: suisei-cn/actions-download-file@v1.4.0
         with:
@@ -69,11 +62,6 @@ jobs:
           /bin/bash -c "yes | ./opensearch-${{ env.OPENSEARCH_VERSION }}-SNAPSHOT/bin/opensearch-plugin install file:$(pwd)/plugin-artifacts/opensearch-job-scheduler.zip"
         shell: bash
 
-      - name: Install observability plugin
-        run: |
-          /bin/bash -c "yes | ./opensearch-${{ env.OPENSEARCH_VERSION }}-SNAPSHOT/bin/opensearch-plugin install file:$(pwd)/plugin-artifacts/observability.zip"
-        shell: bash
-
       - name: Install SQL plugin
         run: |
           /bin/bash -c "yes | ./opensearch-${{ env.OPENSEARCH_VERSION }}-SNAPSHOT/bin/opensearch-plugin install file:$(pwd)/plugin-artifacts/sql.zip"
@@ -90,10 +78,10 @@ jobs:
           ref: ${{ env.OPENSEARCH_DASHBOARDS_VERSION }}
           path: OpenSearch-Dashboards
 
-      - name: Checkout dashboards observability
+      - name: Checkout dashboards investigation
         uses: actions/checkout@v4
         with:
-          path: OpenSearch-Dashboards/plugins/dashboards-observability
+          path: OpenSearch-Dashboards/plugins/dashboards-investigation
 
       - name: Get node and yarn versions
         working-directory: ${{ env.WORKING_DIR }}
@@ -187,7 +175,7 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          yarn cypress:run-without-security --browser chromium --spec 'cypress/integration/plugins/observability-dashboards/*.js'
+          yarn cypress:run-without-security --browser chromium --spec 'cypress/integration/plugins/investigation-dashboards/*.js'
         working-directory: opensearch-dashboards-functional-test
 
       - name: Capture failure screenshots

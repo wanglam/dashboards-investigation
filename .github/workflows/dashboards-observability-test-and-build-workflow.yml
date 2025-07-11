@@ -1,9 +1,9 @@
-name: Test and Build Observability Dashboards Plugin
+name: Test and Build Investigation Dashboards Plugin
 
 on: [pull_request, push]
 
 env:
-  PLUGIN_NAME: dashboards-observability
+  PLUGIN_NAME: dashboards-investigation
   OPENSEARCH_DASHBOARDS_VERSION: 'main'
   OPENSEARCH_PLUGIN_VERSION: '3.0.0.0-beta1'
 
@@ -33,10 +33,10 @@ jobs:
           ref: ${{ env.OPENSEARCH_DASHBOARDS_VERSION }}
           path: OpenSearch-Dashboards
 
-      - name: Checkout Dashboards Observability
+      - name: Checkout Dashboards Investigation
         uses: actions/checkout@v4
         with:
-          path: OpenSearch-Dashboards/plugins/dashboards-observability
+          path: OpenSearch-Dashboards/plugins/dashboards-investigation
 
       - name: Plugin Bootstrap
         uses: nick-fields/retry@v2
@@ -50,19 +50,19 @@ jobs:
                                  yarn config set network-timeout 1000000 -g &&
                                  yarn osd bootstrap --single-version=loose"
 
-      - name: Test all dashboards-observability modules
+      - name: Test all dashboards-investigation modules
         run: |
           chown -R 1000:1000 `pwd`
           cd ./OpenSearch-Dashboards/
           su `id -un 1000` -c "source $NVM_DIR/nvm.sh && nvm use && node -v && yarn -v &&
-                               cd plugins/dashboards-observability &&
+                               cd plugins/dashboards-investigation &&
                                yarn osd bootstrap --single-version=loose && yarn test --coverage --maxWorkers=100%"
 
       - name: Upload coverage
         uses: codecov/codecov-action@v1
         with:
-          flags: dashboards-observability
-          directory: ./OpenSearch-Dashboards/plugins/dashboards-observability
+          flags: dashboards-investigation
+          directory: ./OpenSearch-Dashboards/plugins/dashboards-investigation
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build Artifact
@@ -70,14 +70,14 @@ jobs:
           chown -R 1000:1000 `pwd`
           cd ./OpenSearch-Dashboards/
           su `id -un 1000` -c "source $NVM_DIR/nvm.sh && nvm use && node -v && yarn -v &&
-                               cd plugins/dashboards-observability &&
+                               cd plugins/dashboards-investigation &&
                                yarn build && mv ./build/*.zip ./build/${{ env.PLUGIN_NAME }}-${{ env.OPENSEARCH_PLUGIN_VERSION }}.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dashboards-observability-ubuntu-latest
-          path: ./OpenSearch-Dashboards/plugins/dashboards-observability/build
+          name: dashboards-investigation-ubuntu-latest
+          path: ./OpenSearch-Dashboards/plugins/dashboards-investigation/build
 
   build-windows-macos:
     strategy:
@@ -117,10 +117,10 @@ jobs:
       - run: node -v
       - run: yarn -v
 
-      - name: Checkout Dashboards Observability
+      - name: Checkout Dashboards Investigation
         uses: actions/checkout@v4
         with:
-          path: OpenSearch-Dashboards/plugins/dashboards-observability
+          path: OpenSearch-Dashboards/plugins/dashboards-investigation
 
       - name: Plugin Bootstrap
         uses: nick-fields/retry@v2
@@ -132,19 +132,19 @@ jobs:
             yarn config set network-timeout 1000000 -g
             yarn osd bootstrap --single-version=loose
 
-      - name: Test all dashboards-observability modules
+      - name: Test all dashboards-investigation modules
         run: |
-          cd OpenSearch-Dashboards/plugins/dashboards-observability
+          cd OpenSearch-Dashboards/plugins/dashboards-investigation
           yarn test --coverage --maxWorkers=100%
 
       - name: Build Artifact
         run: |
-          cd OpenSearch-Dashboards/plugins/dashboards-observability
+          cd OpenSearch-Dashboards/plugins/dashboards-investigation
           yarn build
           mv ./build/*.zip ./build/${{ env.PLUGIN_NAME }}-${{ env.OPENSEARCH_PLUGIN_VERSION }}.zip
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dashboards-observability-${{ matrix.os }}
-          path: ./OpenSearch-Dashboards/plugins/dashboards-observability/build
+          name: dashboards-investigation-${{ matrix.os }}
+          path: ./OpenSearch-Dashboards/plugins/dashboards-investigation/build

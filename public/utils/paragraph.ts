@@ -8,6 +8,10 @@ export const parseParagraphOut = (paragraph) => {
     const result = [];
     for (let i = 0; i < paragraph.out.length; i++) {
       try {
+        if (!paragraph.out[i]) {
+          continue;
+        }
+        // Attempt to parse each output as JSON
         result.push(JSON.parse(paragraph.out[i]));
       } catch (e) {
         console.error(`Failed to parse paragraph.out[${i}]: ${paragraph.out[i]}`);

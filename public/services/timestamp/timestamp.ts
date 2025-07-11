@@ -8,7 +8,6 @@ import isEqual from 'lodash/isEqual';
 import values from 'lodash/values';
 import keys from 'lodash/keys';
 import DSLService from '../requests/dsl';
-import { IDefaultTimestampState } from '../../../common/types/explorer';
 import PPLService from '../requests/ppl';
 
 // eslint-disable-next-line import/no-default-export

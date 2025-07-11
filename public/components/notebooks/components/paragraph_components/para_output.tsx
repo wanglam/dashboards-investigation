@@ -19,6 +19,8 @@ import { DeepResearchContainer } from '../../../../components/custom_panels/pane
 import PPLService from '../../../../services/requests/ppl';
 import { QueryDataGridMemo } from './para_query_grid';
 import { BubbleUpContainer } from '../bubbleup/bubble_up_container';
+import { DashboardPanelState } from '../../../../../../../src/plugins/dashboard/public/application';
+import { EmbeddableInput } from '../../../../../../../src/plugins/embeddable/public';
 
 const createQueryColumns = (jsonColumns: any[]) => {
   let index = 0;
@@ -121,10 +123,43 @@ const OutputBody = ({
           </EuiText>
         );
       case 'VISUALIZATION':
+      case 'OBSERVABILITY_VISUALIZATION':
         let from = moment(visInput?.timeRange?.from).format(dateFormat);
         let to = moment(visInput?.timeRange?.to).format(dateFormat);
         from = from === 'Invalid date' ? visInput.timeRange.from : from;
         to = to === 'Invalid date' ? visInput.timeRange.to : to;
+
+        const panels = Object.entries(visInput?.panels || {}).reduce(
+          (
+            acc,
+            [panelKey, panel]: [
+              string,
+              DashboardPanelState<EmbeddableInput & { [k: string]: unknown }>
+            ]
+          ) => {
+            const savedObjectId: string = panel.explicitInput.savedObjectId as string;
+            if (savedObjectId.includes('observability-visualization:')) {
+              return {
+                ...acc,
+                [panelKey]: {
+                  ...panel,
+                  type: 'observability-visualization',
+                  explicitInput: {
+                    ...panel.explicitInput,
+                    savedObjectId: savedObjectId.replace('observability-visualization:', ''),
+                  },
+                },
+              };
+            }
+
+            return {
+              ...acc,
+              [panelKey]: panel,
+            };
+          },
+          {} as DashboardContainerInput['panels']
+        );
+
         return (
           <>
             <EuiText size="s" style={{ marginLeft: 9 }}>
@@ -132,7 +167,10 @@ const OutputBody = ({
             </EuiText>
             <DashboardContainerByValueRenderer
               key={key}
-              input={visInput}
+              input={{
+                ...visInput,
+                panels,
+              }}
               onInputUpdated={setVisInput}
             />
           </>
@@ -151,7 +189,14 @@ const OutputBody = ({
       case 'DEEP_RESEARCH':
         return <DeepResearchContainer http={http} para={para} onTaskFinish={() => {}} />;
       case 'ANOMALY_VISUALIZATION_ANALYSIS':
-        return <BubbleUpContainer http={http} para={para} updateBubbleParagraph={updateBubbleParagraph} updateNotebookContext={updateNotebookContext} />;
+        return (
+          <BubbleUpContainer
+            http={http}
+            para={para}
+            updateBubbleParagraph={updateBubbleParagraph}
+            updateNotebookContext={updateNotebookContext}
+          />
+        );
       default:
         return <pre key={key}>{val}</pre>;
     }
@@ -180,7 +225,15 @@ export const ParaOutput = (props: {
   updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
   updateNotebookContext: (newContext: any) => Promise<any>;
 }) => {
-  const { para, http, DashboardContainerByValueRenderer, visInput, setVisInput, updateBubbleParagraph, updateNotebookContext } = props;
+  const {
+    para,
+    http,
+    DashboardContainerByValueRenderer,
+    visInput,
+    setVisInput,
+    updateBubbleParagraph,
+    updateNotebookContext,
+  } = props;
 
   return (
     !para.isOutputHidden && (

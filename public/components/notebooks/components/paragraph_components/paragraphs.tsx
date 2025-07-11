@@ -134,8 +134,8 @@ interface ParagraphProps {
   paradataSourceMDSId: string;
   dataSourceMDSLabel: string;
   paragraphs: ParaType[];
-  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>
-  updateNotebookContext: (newContext: any) => Promise<any>
+  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
+  updateNotebookContext: (newContext: any) => Promise<any>;
 }
 
 export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
@@ -158,7 +158,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     paradataSourceMDSId,
     dataSourceMDSLabel,
     updateBubbleParagraph,
-    updateNotebookContext
+    updateNotebookContext,
   } = props;
 
   const [visOptions, setVisOptions] = useState<EuiComboBoxOptionOption[]>([
@@ -196,7 +196,8 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   // output is available if it's not cleared and vis paragraph has a selected visualization
   const isOutputAvailable =
     (para.out.length > 0 && para.out[0] !== '') ||
-    (para.isVizualisation && para.typeOut.length > 0 && visInput !== undefined) || para.isAnomalyVisualizationAnalysis;
+    (para.isVizualisation && para.typeOut.length > 0 && visInput !== undefined) ||
+    para.isAnomalyVisualizationAnalysis;
 
   useImperativeHandle(ref, () => ({
     runParagraph() {
@@ -556,6 +557,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   };
 
   const renderOutputTimestampMessage = () => {
+    console.log('output');
     if (props.selectedViewId === 'view_both') {
       return (
         <>
@@ -683,7 +685,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
         {renderParaHeader(
           para.isAnomalyVisualizationAnalysis
             ? 'Anomaly Visualization Analysis'
-            :para.isDeepResearch
+            : para.isDeepResearch
             ? `Deep Research${deepResearchMemoryId ? ` (Memory ID: ${deepResearchMemoryId})` : ''}`
             : !para.isVizualisation
             ? 'Code block'

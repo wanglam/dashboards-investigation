@@ -3,7 +3,7 @@ name: Lint
 on: [pull_request]
 
 env:
-  PLUGIN_NAME: dashboards-observability
+  PLUGIN_NAME: dashboards-investigation
   OPENSEARCH_DASHBOARDS_VERSION: 'main'
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
           ref: ${{ env.OPENSEARCH_DASHBOARDS_VERSION }}
           path: OpenSearch-Dashboards
 
-      - name: Checkout dashboards observability
+      - name: Checkout dashboards investigation
         uses: actions/checkout@v4
         with:
           path: OpenSearch-Dashboards/plugins/${{ env.PLUGIN_NAME }}

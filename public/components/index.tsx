@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { QueryManager } from 'common/query_manager';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { AppMountParameters, CoreStart } from '../../../../src/core/public';
@@ -16,14 +15,8 @@ export const Observability = (
   DepsStart: AppPluginStartDependencies,
   AppMountParametersProp: AppMountParameters,
   pplService: any,
-  dslService: any,
-  savedObjects: any,
-  timestampUtils: any,
-  queryManager: QueryManager,
-  startPage: string,
   dataSourceManagement: DataSourceManagementPluginSetup,
-  savedObjectsMDSClient: CoreStart['savedObjects'],
-  defaultRoute?: string
+  savedObjectsMDSClient: CoreStart['savedObjects']
 ) => {
   const { setHeaderActionMenu } = AppMountParametersProp;
   const { dataSource } = DepsStart;
@@ -32,16 +25,10 @@ export const Observability = (
       CoreStartProp={CoreStartProp}
       DepsStart={DepsStart}
       pplService={pplService}
-      dslService={dslService}
-      savedObjects={savedObjects}
-      timestampUtils={timestampUtils}
-      queryManager={queryManager}
-      startPage={startPage}
       dataSourceManagement={dataSourceManagement}
       setActionMenu={setHeaderActionMenu}
       dataSourceEnabled={!!dataSource}
       savedObjectsMDSClient={savedObjectsMDSClient}
-      defaultRoute={defaultRoute}
     />,
     AppMountParametersProp.element
   );

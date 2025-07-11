@@ -13,23 +13,14 @@ export function plugin(initializerContext: PluginInitializerContext) {
 
 export { ObservabilityPluginSetup, ObservabilityPluginStart } from './types';
 
-const observabilityConfig = {
+const investigationConfig = {
   schema: schema.object({
-    query_assist: schema.object({
-      enabled: schema.boolean({ defaultValue: true }),
-    }),
-    summarize: schema.object({
-      enabled: schema.boolean({ defaultValue: false }),
-    }),
+    enabled: schema.boolean({ defaultValue: false }),
   }),
 };
 
-export type ObservabilityConfig = TypeOf<typeof observabilityConfig.schema>;
+export type ObservabilityConfig = TypeOf<typeof investigationConfig.schema>;
 
 export const config: PluginConfigDescriptor<ObservabilityConfig> = {
-  schema: observabilityConfig.schema,
-  exposeToBrowser: {
-    query_assist: true,
-    summarize: true,
-  },
+  schema: investigationConfig.schema,
 };

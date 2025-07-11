@@ -8,7 +8,7 @@ import { Toast } from '@elastic/eui/src/components/toast/global_toast_list';
 import React, { ReactChild } from 'react';
 // eslint-disable-next-line @osd/eslint/module_migration
 import { Route, Switch } from 'react-router';
-import { HashRouter, RouteComponentProps } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import {
   ChromeBreadcrumb,
   CoreStart,
@@ -36,7 +36,7 @@ import { Notebook } from './notebook';
  * https://components.nteract.io/#cell
  */
 
-type MainProps = RouteComponentProps & {
+interface MainProps {
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
   http: CoreStart['http'];
   pplService: PPLService;
@@ -47,7 +47,7 @@ type MainProps = RouteComponentProps & {
   dataSourceManagement: DataSourceManagementPluginSetup;
   setActionMenu: (menuMount: MountPoint | undefined) => void;
   savedObjectsMDSClient: SavedObjectsStart;
-};
+}
 
 interface MainState {
   data: NotebookType[];
