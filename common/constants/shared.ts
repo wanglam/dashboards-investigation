@@ -37,61 +37,9 @@ export const JOB_RESULT_ENDPOINT = '/result';
 export const tutorialSampleDataPluginId = 'import_sample_data';
 export const dataSourceManagementPluginId = 'dataSources';
 
-export const observabilityID = 'observability-logs';
-export const observabilityTitle = 'Observability';
-export const observabilityPluginOrder = 1500;
-
-export const observabilityOverviewID = 'observability-overview';
-export const observabilityOverviewTitle = 'Overview';
-export const observabilityOverviewTitleWithUseCase = 'Observability overview';
-export const observabilityOverviewPluginOrder = 5088;
-
-export const observabilityGettingStartedID = 'observability-gettingStarted';
-export const observabilityGettingStartedTitle = 'Get started';
-export const observabilityGettingStartedPluginOrder = 5089;
-
-export const observabilityApplicationsID = 'observability-applications';
-export const observabilityApplicationsTitle = 'Applications';
-export const observabilityApplicationsPluginOrder = 5090;
-
-export const observabilityLogsID = 'observability-logs';
-export const observabilityLogsTitle = 'Logs';
-export const observabilityLogsPluginOrder = 5091;
-
-export const observabilityMetricsID = 'observability-metrics';
-export const observabilityMetricsTitle = 'Metrics';
-export const observabilityMetricsPluginOrder = 5092;
-
-export const observabilityTracesNewNavID = 'observability-traces-nav';
-export const observabilityTracesNewNavURL = observabilityTracesNewNavID;
-export const observabilityTracesID = 'observability-traces';
-export const observabilityTracesTitle = 'Traces';
-export const observabilityTracesPluginOrder = 5093;
-
-export const observabilityServicesNewNavID = 'observability-services-nav';
-export const observabilityServicesNewNavURL = observabilityServicesNewNavID;
-export const observabilityServicesID = 'observability-services';
-export const observabilityServicesTitle = 'Services';
-export const observabilityServicesPluginOrder = 5092;
-
 export const observabilityNotebookID = 'investigation-notebooks';
 export const observabilityNotebookTitle = 'Notebooks';
 export const observabilityNotebookPluginOrder = 5094;
-
-export const observabilityPanelsID = 'observability-dashboards';
-export const observabilityPanelsTitle = 'Dashboards';
-export const observabilityPanelsPluginOrder = 5095;
-
-export const observabilityIntegrationsID = 'integrations';
-export const observabilityIntegrationsTitle = 'Integrations';
-export const observabilityIntegrationsPluginOrder = 9020;
-
-export const observabilityDataConnectionsID = 'datasources';
-export const observabilityDataConnectionsTitle = 'Data sources';
-export const observabilityDataConnectionsPluginOrder = 9030;
-
-export const queryWorkbenchPluginID = 'opensearch-query-workbench';
-export const queryWorkbenchPluginCheck = 'plugin:queryWorkbenchDashboards';
 
 export const alertingPluginID = 'alerting';
 export const anomalyDetectionPluginID = 'anomaly-detection-dashboards';

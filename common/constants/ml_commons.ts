@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const OBSERVABILITY_ML_COMMONS_API_PREFIX = '/api/observability/ml-commons';
+const OBSERVABILITY_ML_COMMONS_API_PREFIX = '/api/investigation/ml-commons';
 export const OBSERVABILITY_ML_COMMONS_API = {
   singleTask: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/tasks/{taskId}`,
   agents: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/agents`,
