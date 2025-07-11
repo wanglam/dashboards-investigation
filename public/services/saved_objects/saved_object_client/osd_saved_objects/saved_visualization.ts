@@ -20,7 +20,6 @@ import {
 } from '../types';
 import { OSDSavedObjectClient } from './osd_saved_object_client';
 import { OSDSavedObjectCreateResponse, OSDSavedObjectUpdateResponse } from './types';
-import { QueryManager } from '../../../../../common/query_manager/ppl_query_manager';
 
 interface CommonParams {
   query: string;
@@ -130,7 +129,7 @@ export class OSDSavedVisualizationClient extends OSDSavedObjectClient {
     };
   }
 
-  updateBulk(params: unknown): Promise<Array<Promise<unknown>>> {
+  updateBulk(): Promise<Array<Promise<unknown>>> {
     throw new Error('Method not implemented.');
   }
 

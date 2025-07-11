@@ -39,6 +39,7 @@ export const dataSourceManagementPluginId = 'dataSources';
 
 export const observabilityNotebookID = 'investigation-notebooks';
 export const observabilityNotebookTitle = 'Notebooks';
+export const observabilityPluginOrder = 1500;
 export const observabilityNotebookPluginOrder = 5094;
 
 export const alertingPluginID = 'alerting';

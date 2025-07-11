@@ -7,14 +7,6 @@ import { EuiComboBoxOptionOption } from '@elastic/eui';
 
 export type AccelerationStatus = 'ACTIVE' | 'INACTIVE';
 
-export interface PermissionsConfigurationProps {
-  roles: Role[];
-  selectedRoles: Role[];
-  setSelectedRoles: React.Dispatch<React.SetStateAction<Role[]>>;
-  layout: 'horizontal' | 'vertical';
-  hasSecurityAccess: boolean;
-}
-
 export interface TableColumn {
   name: string;
   dataType: string;

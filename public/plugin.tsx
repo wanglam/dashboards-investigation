@@ -11,17 +11,12 @@ import {
   CoreStart,
   Plugin,
 } from '../../../src/core/public';
-import { createGetterSetter } from '../../../src/plugins/opensearch_dashboards_utils/public';
 import {
   observabilityNotebookID,
   observabilityNotebookPluginOrder,
   observabilityNotebookTitle,
   observabilityPluginOrder,
 } from '../common/constants/shared';
-import {
-  RenderAccelerationDetailsFlyoutParams,
-  RenderAssociatedObjectsDetailsFlyoutParams,
-} from '../common/types/data_connections';
 import {
   setOSDHttp,
   setOSDSavedObjectsClient,
@@ -49,30 +44,6 @@ import {
   setExpressions,
   setSearch,
 } from './services';
-
-export const [
-  getRenderAccelerationDetailsFlyout,
-  setRenderAccelerationDetailsFlyout,
-] = createGetterSetter<
-  ({
-    acceleration,
-    dataSourceName,
-    handleRefresh,
-    dataSourceMDSId,
-  }: RenderAccelerationDetailsFlyoutParams) => void
->('renderAccelerationDetailsFlyout');
-
-export const [
-  getRenderAssociatedObjectsDetailsFlyout,
-  setRenderAssociatedObjectsDetailsFlyout,
-] = createGetterSetter<
-  ({
-    tableDetail,
-    dataSourceName,
-    handleRefresh,
-    dataSourceMDSId,
-  }: RenderAssociatedObjectsDetailsFlyoutParams) => void
->('renderAssociatedObjectsDetailsFlyout');
 
 export class ObservabilityPlugin
   implements
