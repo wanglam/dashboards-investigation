@@ -1,5 +1,5 @@
 {
-  "id": "notebookDashboards",
+  "id": "investigationDashboards",
   "version": "3.1.0.0",
   "opensearchDashboardsVersion": "3.1.0",
   "server": true,
@@ -28,7 +28,7 @@
     "dataSourceManagement"
   ],
   "configPath": [
-    "notebook"
+    "investigationDashboards"
   ],
   "supportedOSDataSourceVersions": ">=2.9.0",
   "requiredOSDataSourcePlugins": [
