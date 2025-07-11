@@ -4,7 +4,6 @@
  */
 
 import { EuiComboBoxOptionOption } from '@elastic/eui';
-import { DirectQueryLoadingStatus } from './explorer';
 
 export type AccelerationStatus = 'ACTIVE' | 'INACTIVE';
 

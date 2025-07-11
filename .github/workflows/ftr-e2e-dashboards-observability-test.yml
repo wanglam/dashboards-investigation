@@ -10,7 +10,7 @@ env:
 
 jobs:
   tests:
-    name: Run FTR E2E Dashboards Observability Tests
+    name: Run FTR E2E Dashboards Investigation Tests
     env:
       # Prevents extra Cypress installation progress messages
       CI: 1

@@ -4,7 +4,6 @@
  */
 
 import { htmlIdGenerator } from '@elastic/eui';
-import { ThresholdUnitType } from '../../public/components/event_analytics/explorer/visualizations/config_panel/config_panes/config_controls/config_thresholds';
 import { VIS_CHART_TYPES } from './shared';
 
 // URLs

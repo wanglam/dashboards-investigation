@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IField } from '../../../../../common/types/explorer';
 import {
   OBSERVABILITY_BASE,
   EVENT_ANALYTICS,
@@ -16,7 +15,6 @@ import { getOSDHttp } from '../../../../../common/utils';
 
 interface CommonParams {
   query: string;
-  fields: IField[];
   dateRange: [string, string];
   type: string;
   name: string;

@@ -4,7 +4,6 @@
  */
 
 import { SavedObjectAttributes } from '../../../../src/core/types';
-import { SavedQuery, SavedVisualization } from './explorer';
 
 export const VISUALIZATION_SAVED_OBJECT = 'observability-visualization';
 export const SEARCH_SAVED_OBJECT = 'observability-search';

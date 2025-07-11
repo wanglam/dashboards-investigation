@@ -7,7 +7,6 @@ import {
   SEARCH_SAVED_OBJECT,
   VISUALIZATION_SAVED_OBJECT,
 } from '../../../../common/types/observability_saved_object_attributes';
-import { ISavedObjectRequestParams } from '../event_analytics/saved_objects';
 import { OSDSavedObjectClient } from './osd_saved_objects/osd_saved_object_client';
 import { OSDSavedVisualizationClient } from './osd_saved_objects/saved_visualization';
 import { OSDSavedSearchClient } from './osd_saved_objects/saved_searches';
