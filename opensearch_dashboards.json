@@ -28,7 +28,7 @@
     "dataSourceManagement"
   ],
   "configPath": [
-    "investigationDashboards"
+    "investigation"
   ],
   "supportedOSDataSourceVersions": ">=2.9.0",
   "requiredOSDataSourcePlugins": [
