@@ -57,6 +57,7 @@ const getQueryOutputData = (queryObject: any) => {
 };
 
 const OutputBody = ({
+  index,
   key,
   http,
   typeOut,
@@ -68,6 +69,7 @@ const OutputBody = ({
   updateBubbleParagraph,
   updateNotebookContext,
 }: {
+  index: number;
   key: string;
   http: CoreStart['http'];
   typeOut: string;
@@ -76,7 +78,7 @@ const OutputBody = ({
   visInput: DashboardContainerInput;
   setVisInput: (input: DashboardContainerInput) => void;
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
-  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
+  updateBubbleParagraph: (index: number, paraUniqueId: string, result: string) => Promise<any>;
   updateNotebookContext: (newContext: any) => Promise<any>;
 }) => {
   /* Returns a component to render paragraph outputs using the para.typeOut property
@@ -189,14 +191,7 @@ const OutputBody = ({
       case 'DEEP_RESEARCH':
         return <DeepResearchContainer http={http} para={para} onTaskFinish={() => {}} />;
       case 'ANOMALY_VISUALIZATION_ANALYSIS':
-        return (
-          <BubbleUpContainer
-            http={http}
-            para={para}
-            updateBubbleParagraph={updateBubbleParagraph}
-            updateNotebookContext={updateNotebookContext}
-          />
-        );
+        return <BubbleUpContainer index={index} http={http} para={para} updateBubbleParagraph={updateBubbleParagraph} updateNotebookContext={updateNotebookContext} />;
       default:
         return <pre key={key}>{val}</pre>;
     }
@@ -216,24 +211,17 @@ const OutputBody = ({
  * https://components.nteract.io/#outputs
  */
 export const ParaOutput = (props: {
+  index: number,
   http: CoreStart['http'];
   pplService: PPLService;
   para: ParaType;
   visInput: DashboardContainerInput;
   setVisInput: (input: DashboardContainerInput) => void;
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
-  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
+  updateBubbleParagraph: (index: number, paraUniqueId: string, result: string) => Promise<any>;
   updateNotebookContext: (newContext: any) => Promise<any>;
 }) => {
-  const {
-    para,
-    http,
-    DashboardContainerByValueRenderer,
-    visInput,
-    setVisInput,
-    updateBubbleParagraph,
-    updateNotebookContext,
-  } = props;
+  const { index, para, http, DashboardContainerByValueRenderer, visInput, setVisInput, updateBubbleParagraph, updateNotebookContext } = props;
 
   return (
     !para.isOutputHidden && (
@@ -241,6 +229,7 @@ export const ParaOutput = (props: {
         {para.typeOut.map((typeOut: string, tIdx: number) => {
           return (
             <OutputBody
+              index={index}
               key={para.uniqueId + '_paraOutputBody'}
               typeOut={typeOut}
               val={para.out[tIdx]}

@@ -531,6 +531,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
   };
 
   updateBubbleParagraph = async (
+    index: number,
     paraUniqueId: string,
     result: string,
   ) => {
@@ -547,6 +548,13 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
           ],
         }),
       });
+
+      const paragraphs = this.state.paragraphs;
+      paragraphs[index] = response;
+      const parsedPara = [...this.state.parsedPara];
+      parsedPara[index] = this.parseParagraphs([response])[0];
+
+      this.setState({ paragraphs, parsedPara });
       return response;
     } catch (error) {
       console.error('Failed to update bubble paragraph:', error);
@@ -563,13 +571,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       }),
     });
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update notebook context');
-    }
-    
-    const result = await response.json();
-    return result;
+    return response;
   } catch (error) {
     console.error('Error updating notebook context:', error);
     throw error;

@@ -105,7 +105,7 @@ export const ContextPanel = (props: AddButtonProps) => {
             />
           </EuiFlexItem>
 
-          {/* <EuiFlexItem grow={false}>
+          <EuiFlexItem grow={false}>
             <EuiSmallButton
               data-test-subj="paragraphToggleBubbleUpBtn"
               aria-label="Bubble up button"
@@ -114,7 +114,7 @@ export const ContextPanel = (props: AddButtonProps) => {
             >
               Analyze data
             </EuiSmallButton>
-          </EuiFlexItem> */}
+          </EuiFlexItem>
         </EuiFlexGroup>
       </EuiPanel>
     </>

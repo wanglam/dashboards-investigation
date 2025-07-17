@@ -71,4 +71,5 @@ export interface NotebookContext {
   summary?: string;
   specs?: Array<Record<string, unknown>>;
   updateSpecs?: (newSpecs: Array<Record<string, unknown>>) => void;
+  PPLFilters: string[];
 }

@@ -13,17 +13,21 @@ import {
 } from '../../../../../../../src/plugins/data/public';
 import { getData, getSearch } from '../../../../services';
 
+const longTextFields = ['message', 'body', 'description'];
+
 class BubbleUpDataDistributionService {
   private readonly search: ISearchStart;
   private readonly data: DataPublicPluginStart;
   private baseCount: number;
   private selectCount: number;
+  private logPatternField: string;
 
   constructor() {
     this.data = getData();
     this.search = getSearch();
     this.baseCount = 1;
     this.selectCount = 1;
+    this.logPatternField = '';
   }
 
   private async fetchIndexData(
@@ -193,6 +197,64 @@ class BubbleUpDataDistributionService {
   //         return usefulFields;
   //     }
 
+  public getLogPatternField(sampleData: Record<string, any>, discoverFields: string[]): string[] {
+    const logPatternFields = discoverFields.filter(field =>
+      longTextFields.some(longTextField =>
+        field.includes(longTextField)
+      )
+    );
+    if (logPatternFields.length > 0) {
+      let longestField = '';
+      let maxLength = 0;
+
+      logPatternFields.forEach((field) => {
+        if (sampleData?.[field]?.length > maxLength) {
+          maxLength = sampleData?.[field].length;
+          longestField = field;
+        }
+      });
+      if (longestField) {
+        this.logPatternField = longestField;
+        return discoverFields.filter(field => field !== longestField);
+      }
+    }
+    return discoverFields;
+  }
+
+  public getLogPattern() {
+    const dataSourceQuery = { query: { dataSourceId: dataSourceID || '' }};
+
+    const selectionEndTime = moment
+            .utc(to)
+            .format(DEFAULT_PPL_QUERY_DATE_FORMAT);
+    const baselineEndTime = moment
+            .utc(from)
+            .format(DEFAULT_PPL_QUERY_DATE_FORMAT);
+
+    const basePPL =
+        `source=${index} | ` +
+        `where ${pplTimeField} >= TIMESTAMPADD(${pplBucketUnitOfTime}, -${pplBucketValue}, '${pplAlertTriggerTime}') and ` +
+        `${pplTimeField} <= TIMESTAMP('${pplAlertTriggerTime}')`;
+
+    const basePPLWithFilters = formikToPPLFilters.reduce((acc, filter) => {
+        return `${acc} | where ${filter}`;
+    }, basePPL);
+
+    const selectionPPL =
+            `${basePPLWithFilters} | patterns ${patternField} method=brain | ` +
+            `stats count() as count  by patterns_field | ` +
+            `sort - count | head ${DEFAULT_LOG_PATTERN_TOP_N}`;
+        const baselinePPL =
+            `${basePPL} | patterns ${patternField} method=brain | ` +
+            `stats count() as count  by patterns_field | ` +
+            `sort - count | head ${DEFAULT_LOG_PATTERN_TOP_N}`;
+        return {
+            selectionLogPatternQuery: selectionPPL,
+            baselineLogPatternQuery: baselinePPL,
+    };
+
+  }
+
   public async discoverFields(
     data: {
       selection: Array<Record<string, any>>;
@@ -207,6 +269,7 @@ class BubbleUpDataDistributionService {
     const numberFields: string[] = [];
 
     const mappings = await this.getFields(index, dataSourceId);
+    console.log('mappings', mappings);
 
     const keywordFields = mappings
       .filter((field) => {
@@ -250,9 +313,9 @@ class BubbleUpDataDistributionService {
       return cardinality <= maxCardinality && cardinality > 0;
     });
 
-    console.log('usefulFields', usefulFields);
+    // this.getLogPatternField(data.selection[0], usefulFields);
 
-    return usefulFields;
+    return this.getLogPatternField(data.selection[0], usefulFields);;
   }
 
   /**
@@ -494,7 +557,7 @@ class BubbleUpDataDistributionService {
     }>;
   }> {
     // Only take the first N significant differences
-    const topDifferences = differences.slice(0, maxResults);
+    const topDifferences = differences.filter(diff => diff.divergence > 0).slice(0, maxResults);
     console.log('topDifferences', topDifferences);
 
     return topDifferences.map((diff) => {

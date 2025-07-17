@@ -134,8 +134,8 @@ interface ParagraphProps {
   paradataSourceMDSId: string;
   dataSourceMDSLabel: string;
   paragraphs: ParaType[];
-  updateBubbleParagraph: (paraUniqueId: string, result: string) => Promise<any>;
-  updateNotebookContext: (newContext: any) => Promise<any>;
+  updateBubbleParagraph: (index: number, paraUniqueId: string, result: string) => Promise<any>
+  updateNotebookContext: (newContext: any) => Promise<any>
 }
 
 export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
@@ -373,6 +373,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   // do not show output if it is a visualization paragraph and visInput is not loaded yet
   const paraOutput = (!para.isVizualisation || visInput || para.isAnomalyVisualizationAnalysis) && (
     <ParaOutput
+      index={index}
       http={http}
       pplService={pplService}
       key={para.uniqueId}

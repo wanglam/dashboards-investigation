@@ -19,3 +19,4 @@ export const [getDataSourceManagementSetup, setDataSourceManagementSetup] = crea
   | { enabled: true; dataSourceManagement: DataSourceManagementPluginSetup }
   | { enabled: false; dataSourceManagement: undefined }
 >('DataSourceManagementPluginSetup');
+export const [getClient, setClient] = createGetterSetter<CoreStart['http']>('http');

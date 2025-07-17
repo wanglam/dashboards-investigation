@@ -37,6 +37,7 @@ import {
 import './index.scss';
 import { BubbleUpEmbeddableFactory } from './components/notebooks/components/bubbleup/embeddable/BubbleUpEmbeddableFactory';
 import {
+  setClient,
   setCoreStart,
   setData,
   setDataSourceManagementSetup,
@@ -140,6 +141,7 @@ export class ObservabilityPlugin
     setEmbeddable(startDeps.embeddable);
     setSearch(startDeps.data.search);
     setCoreStart(core);
+    setClient(core.http);
 
     // Export so other plugins can use this flyout
     return {};
