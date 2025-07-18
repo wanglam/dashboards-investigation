@@ -7,10 +7,10 @@ import { PPL_ENDPOINT, SQL_ENDPOINT } from '../../common/constants/shared';
 
 export const PPLPlugin = function (Client, config, components) {
   const ca = components.clientAction.factory;
-  Client.prototype.notebook = components.clientAction.namespaceFactory();
-  const notebook = Client.prototype.notebook.prototype;
+  Client.prototype.investigationNotebook = components.clientAction.namespaceFactory();
+  const investigationNotebook = Client.prototype.investigationNotebook.prototype;
 
-  notebook.pplQuery = ca({
+  investigationNotebook.pplQuery = ca({
     url: {
       fmt: `${PPL_ENDPOINT}`,
       params: {
@@ -24,7 +24,7 @@ export const PPLPlugin = function (Client, config, components) {
     method: 'POST',
   });
 
-  notebook.sqlQuery = ca({
+  investigationNotebook.sqlQuery = ca({
     url: {
       fmt: `${SQL_ENDPOINT}`,
       params: {
