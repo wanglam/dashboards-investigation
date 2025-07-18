@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-const OBSERVABILITY_ML_COMMONS_API_PREFIX = '/api/investigation/ml-commons';
-export const OBSERVABILITY_ML_COMMONS_API = {
-  singleTask: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/tasks/{taskId}`,
-  agents: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/agents`,
-  memory: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/memory`,
-  singleMemory: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/memory/{memoryId}`,
-  memoryMessages: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/memory/{memoryId}/messages`,
-  messageTraces: `${OBSERVABILITY_ML_COMMONS_API_PREFIX}/memory/message/{messageId}/traces`,
+const INVESTIGATION_ML_COMMONS_API_PREFIX = '/api/investigation/ml-commons';
+export const INVESTIGATION_ML_COMMONS_API = {
+  singleTask: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/tasks/{taskId}`,
+  agents: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/agents`,
+  memory: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/memory`,
+  singleMemory: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/memory/{memoryId}`,
+  memoryMessages: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/memory/{memoryId}/messages`,
+  messageTraces: `${INVESTIGATION_ML_COMMONS_API_PREFIX}/memory/message/{messageId}/traces`,
 };
 
 const OPENSEARCH_ML_COMMONS_API_PREFIX = '/_plugins/_ml';

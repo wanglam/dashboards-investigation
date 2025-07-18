@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OBSERVABILITY_ML_COMMONS_API } from '../../common/constants/ml_commons';
+import { INVESTIGATION_ML_COMMONS_API } from '../../common/constants/ml_commons';
 import { CoreStart } from '../../../../src/core/public';
 
 export const getMLCommonsTask = async ({
@@ -17,7 +17,7 @@ export const getMLCommonsTask = async ({
   signal?: AbortSignal;
   dataSourceId?: string;
 }) =>
-  http.get(OBSERVABILITY_ML_COMMONS_API.singleTask.replace('{taskId}', taskId), {
+  http.get(INVESTIGATION_ML_COMMONS_API.singleTask.replace('{taskId}', taskId), {
     signal,
     query: {
       data_source_id: dataSourceId,
@@ -39,7 +39,7 @@ export const getMLCommonsMemory = async ({
   size?: number;
   sort?: { [key: string]: 'asc' | 'desc' };
 }) =>
-  http.get(OBSERVABILITY_ML_COMMONS_API.memory, {
+  http.get(INVESTIGATION_ML_COMMONS_API.memory, {
     signal,
     query: {
       data_source_id: dataSourceId,
@@ -60,7 +60,7 @@ export const getMLCommonsSingleMemory = async ({
   dataSourceId?: string;
   memoryId: string;
 }) =>
-  http.get(OBSERVABILITY_ML_COMMONS_API.singleMemory.replace('{memoryId}', memoryId), {
+  http.get(INVESTIGATION_ML_COMMONS_API.singleMemory.replace('{memoryId}', memoryId), {
     signal,
     query: {
       data_source_id: dataSourceId,
@@ -80,7 +80,7 @@ export const getMLCommonsMemoryMessages = async ({
   dataSourceId?: string;
   nextToken?: string;
 }) =>
-  http.get(OBSERVABILITY_ML_COMMONS_API.memoryMessages.replace('{memoryId}', memoryId), {
+  http.get(INVESTIGATION_ML_COMMONS_API.memoryMessages.replace('{memoryId}', memoryId), {
     signal,
     query: {
       data_source_id: dataSourceId,
@@ -101,7 +101,7 @@ export const getMLCommonsMessageTraces = async ({
   dataSourceId?: string;
   nextToken?: number;
 }) =>
-  http.get(OBSERVABILITY_ML_COMMONS_API.messageTraces.replace('{messageId}', messageId), {
+  http.get(INVESTIGATION_ML_COMMONS_API.messageTraces.replace('{messageId}', messageId), {
     signal,
     query: {
       data_source_id: dataSourceId,

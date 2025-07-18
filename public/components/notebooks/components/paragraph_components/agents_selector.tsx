@@ -8,7 +8,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import _ from 'lodash';
 
 import { CoreStart } from '../../../../../../../src/core/public';
-import { OBSERVABILITY_ML_COMMONS_API } from '../../../../../common/constants/ml_commons';
+import { INVESTIGATION_ML_COMMONS_API } from '../../../../../common/constants/ml_commons';
 
 // Create a debounced request function that's memoized by data source ID
 const fetchAgents = _.memoize(
@@ -19,7 +19,7 @@ const fetchAgents = _.memoize(
       const makeRequest = _.debounce(
         () => {
           http
-            .get(OBSERVABILITY_ML_COMMONS_API.agents, {
+            .get(INVESTIGATION_ML_COMMONS_API.agents, {
               query: {
                 data_source_id: dataSourceMDSId,
                 types,

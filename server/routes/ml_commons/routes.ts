@@ -6,7 +6,7 @@
 import { schema } from '@osd/config-schema';
 import { IRouter } from '../../../../../src/core/server';
 import {
-  OBSERVABILITY_ML_COMMONS_API,
+  INVESTIGATION_ML_COMMONS_API,
   OPENSEARCH_ML_COMMONS_API,
 } from '../../../common/constants/ml_commons';
 import { getOpenSearchClientTransport } from '../utils';
@@ -17,7 +17,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.singleTask,
+      path: INVESTIGATION_ML_COMMONS_API.singleTask,
       validate: {
         params: schema.object({
           taskId: schema.string(),
@@ -51,7 +51,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.agents,
+      path: INVESTIGATION_ML_COMMONS_API.agents,
       validate: {
         query: schema.maybe(
           schema.object({
@@ -101,7 +101,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.memoryMessages,
+      path: INVESTIGATION_ML_COMMONS_API.memoryMessages,
       validate: {
         params: schema.object({
           memoryId: schema.string(),
@@ -147,7 +147,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.messageTraces,
+      path: INVESTIGATION_ML_COMMONS_API.messageTraces,
       validate: {
         params: schema.object({
           messageId: schema.string(),
@@ -191,7 +191,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.memory,
+      path: INVESTIGATION_ML_COMMONS_API.memory,
       validate: {
         query: schema.maybe(
           schema.object({
@@ -241,7 +241,7 @@ export function registerMLCommonsRoutes(router: IRouter) {
    */
   router.get(
     {
-      path: OBSERVABILITY_ML_COMMONS_API.singleMemory,
+      path: INVESTIGATION_ML_COMMONS_API.singleMemory,
       validate: {
         params: schema.object({
           memoryId: schema.string(),
