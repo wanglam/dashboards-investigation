@@ -54,7 +54,6 @@ import { ParaType } from '../../../../../common/types/notebooks';
 import { uiSettingsService } from '../../../../../common/utils';
 import { dataSourceFilterFn } from '../../../../../common/utils/shared';
 import { coreRefs } from '../../../../framework/core_refs';
-import PPLService from '../../../../services/requests/ppl';
 import { SavedObjectsActions } from '../../../../services/saved_objects/saved_object_client/saved_objects_actions';
 import { ObservabilitySavedVisualization } from '../../../../services/saved_objects/saved_object_client/types';
 import { parseParagraphOut } from '../../../../utils/paragraph';
@@ -88,7 +87,6 @@ import { MemorySelector } from './memory_selector';
  * https://components.nteract.io/#cell
  */
 interface ParagraphProps {
-  pplService: PPLService;
   para: ParaType;
   setPara: (para: ParaType) => void;
   dateModified: string;
@@ -140,7 +138,6 @@ interface ParagraphProps {
 
 export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   const {
-    pplService,
     para,
     index,
     paragraphSelector,
@@ -375,7 +372,6 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     <ParaOutput
       index={index}
       http={http}
-      pplService={pplService}
       key={para.uniqueId}
       para={para}
       visInput={visInput}
@@ -562,7 +558,6 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     if (props.selectedViewId === 'view_both') {
       return (
         <>
-          <EuiFlexItem grow={false} />
           <EuiFlexItem grow={false}>
             {para.isOutputStale ? (
               <EuiIcon type="questionInCircle" color="primary" />
@@ -581,7 +576,6 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
       // render message when view mode is input_only
       return (
         <>
-          <EuiFlexItem grow={false} />
           <EuiFlexItem grow={false}>
             <EuiIcon type="questionInCircle" color="primary" />
           </EuiFlexItem>

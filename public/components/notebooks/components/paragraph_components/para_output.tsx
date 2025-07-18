@@ -16,7 +16,6 @@ import {
 import { ParaType } from '../../../../../common/types/notebooks';
 import { uiSettingsService } from '../../../../../common/utils';
 import { DeepResearchContainer } from '../../../../components/custom_panels/panel_modules/deep_research_container';
-import PPLService from '../../../../services/requests/ppl';
 import { QueryDataGridMemo } from './para_query_grid';
 import { BubbleUpContainer } from '../bubbleup/bubble_up_container';
 import { DashboardPanelState } from '../../../../../../../src/plugins/dashboard/public/application';
@@ -213,7 +212,6 @@ const OutputBody = ({
 export const ParaOutput = (props: {
   index: number,
   http: CoreStart['http'];
-  pplService: PPLService;
   para: ParaType;
   visInput: DashboardContainerInput;
   setVisInput: (input: DashboardContainerInput) => void;

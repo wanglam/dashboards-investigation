@@ -14,7 +14,6 @@ export const Observability = (
   CoreStartProp: CoreStart,
   DepsStart: AppPluginStartDependencies,
   AppMountParametersProp: AppMountParameters,
-  pplService: any,
   dataSourceManagement: DataSourceManagementPluginSetup,
   savedObjectsMDSClient: CoreStart['savedObjects']
 ) => {
@@ -24,7 +23,6 @@ export const Observability = (
     <App
       CoreStartProp={CoreStartProp}
       DepsStart={DepsStart}
-      pplService={pplService}
       dataSourceManagement={dataSourceManagement}
       setActionMenu={setHeaderActionMenu}
       dataSourceEnabled={!!dataSource}

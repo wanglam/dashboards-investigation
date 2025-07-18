@@ -61,10 +61,7 @@ interface NoteTableProps {
   notebooks: NotebookType[];
   createNotebook: (newNoteName: string) => void;
   renameNotebook: (newNoteName: string, noteId: string) => void;
-  cloneNotebook: (newNoteName: string, noteId: string) => void;
   deleteNotebook: (noteList: string[], toastMessage?: string) => void;
-  parentBreadcrumb: ChromeBreadcrumb;
-  setBreadcrumbs: (newBreadcrumbs: ChromeBreadcrumb[]) => void;
   dataSourceEnabled: boolean;
   dataSourceManagement: DataSourceManagementPluginSetup;
   setActionMenu: (menuMount: MountPoint | undefined) => void;
@@ -80,8 +77,6 @@ export function NoteTable({
   notebooks,
   createNotebook,
   deleteNotebook,
-  parentBreadcrumb,
-  setBreadcrumbs,
   dataSourceEnabled,
   dataSourceManagement,
   savedObjectsMDSClient,
@@ -96,7 +91,7 @@ export function NoteTable({
 
   useEffect(() => {
     setNavBreadCrumbs(
-      [parentBreadcrumb],
+      [],
       [
         {
           text: 'Notebooks',
@@ -106,7 +101,7 @@ export function NoteTable({
       notebooks.length
     );
     fetchNotebooks();
-  }, [setBreadcrumbs, parentBreadcrumb, fetchNotebooks, notebooks.length]);
+  }, [fetchNotebooks, notebooks.length]);
 
   useEffect(() => {
     const url = window.location.hash.split('/');

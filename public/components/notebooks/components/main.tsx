@@ -21,7 +21,6 @@ import {
   NOTEBOOKS_API_PREFIX,
   NOTEBOOKS_DOCUMENTATION_URL,
 } from '../../../../common/constants/notebooks';
-import PPLService from '../../../services/requests/ppl';
 import { isValidUUID } from './helpers/notebooks_parser';
 import { NoteTable } from './note_table';
 import { Notebook } from './notebook';
@@ -39,14 +38,12 @@ import { Notebook } from './notebook';
 interface MainProps {
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
   http: CoreStart['http'];
-  pplService: PPLService;
   notifications: CoreStart['notifications'];
-  parentBreadcrumb: ChromeBreadcrumb;
-  setBreadcrumbs: (newBreadcrumbs: ChromeBreadcrumb[]) => void;
   dataSourceEnabled: boolean;
   dataSourceManagement: DataSourceManagementPluginSetup;
   setActionMenu: (menuMount: MountPoint | undefined) => void;
   savedObjectsMDSClient: SavedObjectsStart;
+  chrome: CoreStart['chrome'];
 }
 
 interface MainState {
@@ -455,10 +452,7 @@ export class Main extends React.Component<MainProps, MainState> {
                   notebooks={this.state.data}
                   createNotebook={this.createNotebook}
                   renameNotebook={this.renameNotebook}
-                  cloneNotebook={this.cloneNotebook}
                   deleteNotebook={this.deleteNotebook}
-                  parentBreadcrumb={this.props.parentBreadcrumb}
-                  setBreadcrumbs={this.props.setBreadcrumbs}
                   setToast={this.setToast}
                   dataSourceManagement={this.props.dataSourceManagement}
                   notifications={this.props.notifications}
@@ -472,12 +466,9 @@ export class Main extends React.Component<MainProps, MainState> {
               path="/:id"
               render={(props) => (
                 <Notebook
-                  pplService={this.props.pplService}
                   openedNoteId={props.match.params.id}
                   DashboardContainerByValueRenderer={this.props.DashboardContainerByValueRenderer}
                   http={this.props.http}
-                  parentBreadcrumb={this.props.parentBreadcrumb}
-                  setBreadcrumbs={this.props.setBreadcrumbs}
                   renameNotebook={this.renameNotebook}
                   cloneNotebook={this.cloneNotebook}
                   deleteNotebook={this.deleteNotebook}

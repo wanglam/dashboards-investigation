@@ -48,7 +48,6 @@ import { NotebookContext, ParaType } from '../../../../common/types/notebooks';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 import { HeaderControlledComponentsWrapper } from '../../../../public/plugin_helpers/plugin_headerControl';
 import { coreRefs } from '../../../framework/core_refs';
-import PPLService from '../../../services/requests/ppl';
 import { GenerateReportLoadingModal } from './helpers/custom_modals/reporting_loading_modal';
 import { defaultParagraphParser } from './helpers/default_parser';
 import { DeleteNotebookModal, getCustomModal, getDeleteModal } from './helpers/modal_containers';
@@ -80,15 +79,11 @@ const panelStyles: CSS.Properties = {
  * Props taken in as params are:
  * DashboardContainerByValueRenderer - Dashboard container renderer for visualization
  * http object - for making API requests
- * setBreadcrumbs - sets breadcrumbs on top
  */
 interface NotebookProps {
-  pplService: PPLService;
   openedNoteId: string;
   DashboardContainerByValueRenderer: DashboardStart['DashboardContainerByValueRenderer'];
   http: CoreStart['http'];
-  parentBreadcrumb: ChromeBreadcrumb;
-  setBreadcrumbs: (newBreadcrumbs: ChromeBreadcrumb[]) => void;
   renameNotebook: (newNoteName: string, noteId: string) => Promise<any>;
   cloneNotebook: (newNoteName: string, noteId: string) => Promise<string>;
   deleteNotebook: (noteList: string[], toastMessage?: string) => void;
@@ -917,7 +912,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
 
   setBreadcrumbs(path: string) {
     setNavBreadCrumbs(
-      [this.props.parentBreadcrumb],
+      [],
       [
         {
           text: 'Notebooks',
@@ -1428,7 +1423,6 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
                     >
                       <Paragraphs
                         ref={this.state.parsedPara[index].paraRef}
-                        pplService={this.props.pplService}
                         para={para}
                         setPara={(pr: ParaType) => this.setPara(pr, index)}
                         dateModified={this.state.paragraphs[index]?.dateModified}

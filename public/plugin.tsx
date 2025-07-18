@@ -60,7 +60,6 @@ export class ObservabilityPlugin
         coreStart,
         depsStart as AppPluginStartDependencies,
         params,
-        pplService,
         dataSourceManagement,
         coreStart.savedObjects
       );
