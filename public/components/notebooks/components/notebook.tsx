@@ -404,9 +404,9 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
     this.props.http
       .delete(
         `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph/` +
-        this.props.openedNoteId +
-        '/' +
-        uniqueId
+          this.props.openedNoteId +
+          '/' +
+          uniqueId
       )
       .then((res) => {
         this.setState({ paragraphs: res.paragraphs });
@@ -530,24 +530,23 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       });
   };
 
-  updateBubbleParagraph = async (
-    index: number,
-    paraUniqueId: string,
-    result: string,
-  ) => {
+  updateBubbleParagraph = async (index: number, paraUniqueId: string, result: string) => {
     try {
-      const response = await this.props.http.put(`${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph`, {
-        body: JSON.stringify({
-          noteId: this.props.openedNoteId,
-          paragraphId: paraUniqueId,
-          paragraphOutput: [
-            {
-              outputType: 'ANOMALY_VISUALIZATION_ANALYSIS',
-              result,
-            },
-          ],
-        }),
-      });
+      const response = await this.props.http.put(
+        `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph`,
+        {
+          body: JSON.stringify({
+            noteId: this.props.openedNoteId,
+            paragraphId: paraUniqueId,
+            paragraphOutput: [
+              {
+                outputType: 'ANOMALY_VISUALIZATION_ANALYSIS',
+                result,
+              },
+            ],
+          }),
+        }
+      );
 
       const paragraphs = this.state.paragraphs;
       paragraphs[index] = response;
@@ -560,23 +559,26 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       console.error('Failed to update bubble paragraph:', error);
       throw error;
     }
-  }
+  };
 
   updateNotebookContext = async (newContext: any) => {
-  try {
-    const response = await this.props.http.put(`${NOTEBOOKS_API_PREFIX}/note/updateNotebookContext`, {
-      body: JSON.stringify({
-        notebookId: this.props.openedNoteId,
-        context: newContext,
-      }),
-    });
-    
-    return response;
-  } catch (error) {
-    console.error('Error updating notebook context:', error);
-    throw error;
-  }
-}
+    try {
+      const response = await this.props.http.put(
+        `${NOTEBOOKS_API_PREFIX}/note/updateNotebookContext`,
+        {
+          body: JSON.stringify({
+            notebookId: this.props.openedNoteId,
+            context: newContext,
+          }),
+        }
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Error updating notebook context:', error);
+      throw error;
+    }
+  };
 
   private _registerDeepResearchParagraphUpdater = ({
     taskId,
@@ -893,7 +895,7 @@ export class Notebook extends Component<NotebookProps, NotebookState> {
       dataSourceMDSId,
     };
     await this.props.http
-      .post(`/api/notebook/sql/${queryType}`, {
+      .post(`/api/investigation/sql/${queryType}`, {
         body: JSON.stringify(paragraph.output[0].result),
         ...(this.props.dataSourceEnabled && { query }),
       })

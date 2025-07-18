@@ -3,19 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { i18n } from '@osd/i18n';
+import { AppMountParameters, CoreSetup, CoreStart, Plugin } from '../../../src/core/public';
 import {
-  AppCategory,
-  AppMountParameters,
-  CoreSetup,
-  CoreStart,
-  Plugin,
-} from '../../../src/core/public';
-import {
-  observabilityNotebookID,
-  observabilityNotebookPluginOrder,
-  observabilityNotebookTitle,
-  observabilityPluginOrder,
+  investigationNotebookID,
+  investigationNotebookPluginOrder,
+  investigationNotebookTitle,
 } from '../common/constants/shared';
 import {
   setOSDHttp,
@@ -25,7 +17,6 @@ import {
 } from '../common/utils';
 import { coreRefs } from './framework/core_refs';
 import { registerAllPluginNavGroups } from './plugin_helpers/plugin_nav';
-import DSLService from './services/requests/dsl';
 import PPLService from './services/requests/ppl';
 import {
   AppPluginStartDependencies,
@@ -61,16 +52,6 @@ export class ObservabilityPlugin
       setOSDSavedObjectsClient(coreStart.savedObjects.client);
     });
 
-    const OBSERVABILITY_APP_CATEGORIES: Record<string, AppCategory> = Object.freeze({
-      observability: {
-        id: 'observability',
-        label: i18n.translate('core.ui.observabilityNavList.label', {
-          defaultMessage: 'Observability',
-        }),
-        order: observabilityPluginOrder,
-      },
-    });
-
     const appMountWithStartPage = () => async (params: AppMountParameters) => {
       const { Observability } = await import('./components/index');
       const [coreStart, depsStart] = await core.getStartServices();
@@ -86,10 +67,9 @@ export class ObservabilityPlugin
     };
 
     core.application.register({
-      id: observabilityNotebookID,
-      title: observabilityNotebookTitle,
-      category: OBSERVABILITY_APP_CATEGORIES.observability,
-      order: observabilityNotebookPluginOrder,
+      id: investigationNotebookID,
+      title: investigationNotebookTitle,
+      order: investigationNotebookPluginOrder,
       mount: appMountWithStartPage(),
     });
 
@@ -118,13 +98,11 @@ export class ObservabilityPlugin
 
   public start(core: CoreStart, startDeps: AppPluginStartDependencies): ObservabilityStart {
     const pplService: PPLService = new PPLService(core.http);
-    const dslService = new DSLService(core.http);
 
     coreRefs.core = core;
     coreRefs.http = core.http;
     coreRefs.savedObjectsClient = core.savedObjects.client;
     coreRefs.pplService = pplService;
-    coreRefs.dslService = dslService;
     coreRefs.toasts = core.notifications.toasts;
     coreRefs.chrome = core.chrome;
     coreRefs.dataSources = startDeps.data;
