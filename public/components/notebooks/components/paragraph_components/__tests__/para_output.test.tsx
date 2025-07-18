@@ -9,17 +9,12 @@ import Adapter from 'enzyme-adapter-react-16';
 import React from 'react';
 import { Provider } from 'react-redux';
 import { legacy_createStore as createStore } from 'redux';
-import {
-  getOSDHttp,
-  setPPLService,
-  uiSettingsService,
-} from '../../../../../../common/utils/core_services';
+import { uiSettingsService } from '../../../../../../common/utils/core_services';
 import {
   sampleObservabilityVizParagraph,
   sampleParsedParagraghs1,
 } from '../../../../../../test/notebooks_constants';
 import { rootReducer } from '../../../../../framework/redux/reducers';
-import PPLService from '../../../../../services/requests/ppl';
 import { ParaOutput } from '../para_output';
 
 describe('<ParaOutput /> spec', () => {
@@ -97,7 +92,6 @@ describe('<ParaOutput /> spec', () => {
   });
 
   it('renders observability visualization outputs', () => {
-    setPPLService(new PPLService(getOSDHttp()));
     const para = sampleObservabilityVizParagraph;
     para.isSelected = true;
 

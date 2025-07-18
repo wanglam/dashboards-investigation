@@ -5,4 +5,3 @@
 
 export { PPLSavedObjectClient } from './ppl_client';
 export { PPLSavedQueryClient } from './saved_query';
-export { PPLSavedVisualizationClient } from './saved_visualization';

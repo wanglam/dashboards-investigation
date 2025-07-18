@@ -10,9 +10,7 @@ import {
   SavedObjectsClientContract,
   ToastInput,
 } from '../../../../src/core/public';
-import { Page } from '../../../../src/plugins/content_management/public';
 import { createGetterSetter } from '../../../../src/plugins/opensearch_dashboards_utils/common';
-import PPLService from '../../public/services/requests/ppl';
 
 let uiSettings: IUiSettingsClient;
 let notifications: NotificationsStart;
@@ -33,9 +31,7 @@ export const uiSettingsService = {
   },
 };
 
-export const [getPPLService, setPPLService] = createGetterSetter<PPLService>('PPLService');
 export const [getOSDHttp, setOSDHttp] = createGetterSetter<HttpStart>('http');
-export const [getOSDSavedObjectsClient, setOSDSavedObjectsClient] = createGetterSetter<
-  SavedObjectsClientContract
->('SavedObjectsClient');
-export const [getOverviewPage, setOverviewPage] = createGetterSetter<Page>('Page');
+export const [c, setOSDSavedObjectsClient] = createGetterSetter<SavedObjectsClientContract>(
+  'SavedObjectsClient'
+);

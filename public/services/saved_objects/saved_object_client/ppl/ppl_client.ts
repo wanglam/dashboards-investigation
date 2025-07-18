@@ -12,7 +12,6 @@ import {
   OBSERVABILITY_BASE,
   SAVED_OBJECTS,
 } from '../../../../../common/constants/shared';
-import { ISavedObjectRequestParams } from '../../event_analytics/saved_objects';
 import { SavedObjectClientBase } from '../client_base';
 import { ISavedObjectsClient } from '../client_interface';
 import {
@@ -29,7 +28,7 @@ export class PPLSavedObjectClient extends SavedObjectClientBase implements ISave
     super();
   }
 
-  create(params: any): Promise<any> {
+  create(): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
@@ -53,11 +52,11 @@ export class PPLSavedObjectClient extends SavedObjectClientBase implements ISave
     });
   }
 
-  update(params: any): Promise<any> {
+  update(): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  updateBulk(params: any): Promise<Array<Promise<any>>> {
+  updateBulk(): Promise<Array<Promise<any>>> {
     throw new Error('Method not implemented.');
   }
 

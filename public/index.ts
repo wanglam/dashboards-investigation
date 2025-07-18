@@ -5,12 +5,12 @@
 
 import { PluginInitializerContext } from '../../../src/core/public';
 import './components/notebooks/index.scss';
-import { ObservabilityPlugin } from './plugin';
+import { InvestigationPlugin } from './plugin';
 import './variables.scss';
 
-export { ObservabilityPlugin as Plugin };
+export { InvestigationPlugin as Plugin };
 
 export const plugin = (initializerContext: PluginInitializerContext) =>
-  new ObservabilityPlugin(initializerContext);
+  new InvestigationPlugin(initializerContext);
 
 export { ObservabilityStart } from './types';

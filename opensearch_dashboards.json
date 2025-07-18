@@ -22,7 +22,6 @@
   ],
   "optionalPlugins": [
     "managementOverview",
-    "assistantDashboards",
     "securityDashboards",
     "dataSource",
     "dataSourceManagement"

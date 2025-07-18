@@ -9,19 +9,14 @@ import {
   investigationNotebookPluginOrder,
   investigationNotebookTitle,
 } from '../common/constants/shared';
-import {
-  setOSDHttp,
-  setOSDSavedObjectsClient,
-  setPPLService,
-  uiSettingsService,
-} from '../common/utils';
+import { setOSDHttp, setOSDSavedObjectsClient, uiSettingsService } from '../common/utils';
 import { coreRefs } from './framework/core_refs';
 import { registerAllPluginNavGroups } from './plugin_helpers/plugin_nav';
 import PPLService from './services/requests/ppl';
 import {
   AppPluginStartDependencies,
-  ObservabilitySetup,
-  ObservabilityStart,
+  InvestigationSetup,
+  InvestigationStart,
   SetupDependencies,
 } from './types';
 
@@ -37,16 +32,15 @@ import {
   setSearch,
 } from './services';
 
-export class ObservabilityPlugin
+export class InvestigationPlugin
   implements
-    Plugin<ObservabilitySetup, ObservabilityStart, SetupDependencies, AppPluginStartDependencies> {
+    Plugin<InvestigationSetup, InvestigationStart, SetupDependencies, AppPluginStartDependencies> {
   public setup(
     core: CoreSetup<AppPluginStartDependencies>,
     setupDeps: SetupDependencies
   ): ObservabilitySetup {
     uiSettingsService.init(core.uiSettings, core.notifications);
     const pplService = new PPLService(core.http);
-    setPPLService(pplService);
     setOSDHttp(core.http);
     core.getStartServices().then(([coreStart]) => {
       setOSDSavedObjectsClient(coreStart.savedObjects.client);

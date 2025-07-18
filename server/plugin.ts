@@ -16,7 +16,7 @@ import { DataSourceManagementPlugin } from '../../../src/plugins/data_source_man
 import { PPLPlugin } from './adaptors/ppl_plugin';
 import { setupRoutes } from './routes/index';
 import { notebookSavedObject } from './saved_objects/observability_saved_object';
-import { AssistantPluginSetup, ObservabilityPluginSetup, ObservabilityPluginStart } from './types';
+import { ObservabilityPluginSetup, ObservabilityPluginStart } from './types';
 
 export interface ObservabilityPluginSetupDependencies {
   dataSourceManagement: ReturnType<DataSourceManagementPlugin['setup']>;
@@ -34,7 +34,6 @@ export class ObservabilityPlugin
   public async setup(
     core: CoreSetup,
     deps: {
-      assistantDashboards?: AssistantPluginSetup;
       dataSource: ObservabilityPluginSetupDependencies;
     }
   ) {
