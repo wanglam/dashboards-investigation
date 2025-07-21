@@ -1,0 +1,12 @@
+  .bubble-up-viz-canvas {
+    height: 100%;
+  }
+
+  .visualize {
+    height: 100%;
+    background-color: $euiColorEmptyShade;
+
+    .visChart__container {
+      overflow: unset;
+    }
+  }

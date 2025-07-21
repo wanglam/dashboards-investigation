@@ -1,0 +1,113 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`<CustomInputModal /> spec renders the component 1`] = `
+<EuiOverlayMask>
+  <EuiModal
+    initialFocus="[name=input]"
+    onClose={[MockFunction]}
+  >
+    <EuiModalHeader>
+      <EuiModalHeaderTitle>
+        <EuiText
+          size="s"
+        >
+          <h2>
+            title
+          </h2>
+        </EuiText>
+      </EuiModalHeaderTitle>
+    </EuiModalHeader>
+    <EuiModalBody>
+      <EuiForm>
+        <EuiCompressedFormRow
+          describedByIds={Array []}
+          display="rowCompressed"
+          fullWidth={false}
+          hasChildLabel={true}
+          hasEmptyLabelSpace={false}
+          helpText="help text"
+          label="label"
+          labelType="label"
+        >
+          <EuiCompressedFieldText
+            data-test-subj="custom-input-modal-input"
+            name="input"
+            onChange={[Function]}
+            value="mock-path"
+          />
+        </EuiCompressedFormRow>
+      </EuiForm>
+    </EuiModalBody>
+    <EuiModalFooter>
+      <EuiSmallButtonEmpty
+        onClick={[MockFunction]}
+      >
+        Cancel
+      </EuiSmallButtonEmpty>
+      <EuiSmallButton
+        data-test-subj="custom-input-modal-confirm-button"
+        fill={true}
+        onClick={[Function]}
+      >
+        Confirm
+      </EuiSmallButton>
+    </EuiModalFooter>
+  </EuiModal>
+</EuiOverlayMask>
+`;
+
+exports[`<CustomInputModal /> spec renders the component 2`] = `
+<EuiOverlayMask>
+  <EuiModal
+    initialFocus="[name=input]"
+    onClose={[MockFunction]}
+  >
+    <EuiModalHeader>
+      <EuiModalHeaderTitle>
+        <EuiText
+          size="s"
+        >
+          <h2>
+            title
+          </h2>
+        </EuiText>
+      </EuiModalHeaderTitle>
+    </EuiModalHeader>
+    <EuiModalBody>
+      <EuiForm>
+        <EuiCompressedFormRow
+          describedByIds={Array []}
+          display="rowCompressed"
+          fullWidth={false}
+          hasChildLabel={true}
+          hasEmptyLabelSpace={false}
+          helpText="help text"
+          label="label"
+          labelType="label"
+        >
+          <EuiCompressedFieldText
+            data-test-subj="custom-input-modal-input"
+            name="input"
+            onChange={[Function]}
+            value=""
+          />
+        </EuiCompressedFormRow>
+      </EuiForm>
+    </EuiModalBody>
+    <EuiModalFooter>
+      <EuiSmallButtonEmpty
+        onClick={[MockFunction]}
+      >
+        Cancel
+      </EuiSmallButtonEmpty>
+      <EuiSmallButton
+        data-test-subj="custom-input-modal-confirm-button"
+        fill={true}
+        onClick={[Function]}
+      >
+        Confirm
+      </EuiSmallButton>
+    </EuiModalFooter>
+  </EuiModal>
+</EuiOverlayMask>
+`;
