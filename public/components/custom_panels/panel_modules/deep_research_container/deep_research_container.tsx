@@ -18,6 +18,7 @@ import {
 } from '@elastic/eui';
 import { interval, Observable, timer } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
+import moment from 'moment';
 
 import { ParagraphStateValue } from 'common/state/paragraph_state';
 import { useObservable, useUpdateEffect } from 'react-use';
@@ -35,6 +36,7 @@ import {
   isStateCompletedOrFailed,
 } from '../../../../utils/task';
 import { getMLCommonsTask } from '../../../../utils/ml_commons_apis';
+import { formatTimeGap, getTimeGapFromDates } from '../../../../utils/time';
 
 interface Props {
   http: CoreStart['http'];
@@ -54,6 +56,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   const [showContextModal, setShowContextModal] = useState(false);
   const [traceModalData, setTraceModalData] = useState<{
     messageId: string;
+    messageCreateTime: string;
     refresh: boolean;
   }>();
   const [task, setTask] = useState();
@@ -171,37 +174,52 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   }, [taskId]);
 
   const renderTraces = () => {
+    const allSteps = [...traces, ...executorMessages.slice(traces.length)];
     return (
       <>
-        {[...traces, ...executorMessages.slice(traces.length)].map(
-          ({ input, response, message_id: messageId }, index) => (
-            <React.Fragment key={messageId}>
-              <EuiAccordion
-                id={`trace-${index}`}
-                buttonContent={`Step ${index + 1}${!response ? '(No response)' : ''} - ${input}`}
-                paddingSize="l"
-              >
-                {response && (
-                  <EuiText className="wrapAll markdown-output-text" size="s">
-                    <MarkdownRender source={response} />
-                  </EuiText>
-                )}
-                {executorMessages?.[index] && (
-                  <EuiButton
-                    onClick={() => {
-                      setTraceModalData({
-                        messageId: executorMessages[index].message_id,
-                        refresh: !response,
-                      });
-                    }}
-                  >
-                    Explain this step
-                  </EuiButton>
-                )}
-              </EuiAccordion>
-              <EuiSpacer />
-            </React.Fragment>
-          )
+        {allSteps.map(
+          ({ input, response, message_id: messageId, create_time: createTime }, index) => {
+            let durationStr = '';
+            if (allSteps[index - 1]) {
+              durationStr = getTimeGapFromDates(
+                moment(allSteps[index - 1].create_time),
+                moment(createTime)
+              );
+            } else if (task?.create_time) {
+              durationStr = getTimeGapFromDates(moment(task.create_time), moment(createTime));
+            }
+
+            return (
+              <React.Fragment key={messageId}>
+                <EuiAccordion
+                  id={`trace-${index}`}
+                  buttonContent={`Step ${index + 1}${!response ? '(No response)' : ''} - ${input} ${
+                    durationStr ? `(Duration: ${durationStr})` : ''
+                  }`}
+                  paddingSize="l"
+                >
+                  {response && (
+                    <EuiText className="wrapAll markdown-output-text" size="s">
+                      <MarkdownRender source={response} />
+                    </EuiText>
+                  )}
+                  {executorMessages?.[index] && (
+                    <EuiButton
+                      onClick={() => {
+                        setTraceModalData({
+                          messageId: executorMessages[index].message_id,
+                          refresh: !response,
+                        });
+                      }}
+                    >
+                      Explain this step
+                    </EuiButton>
+                  )}
+                </EuiAccordion>
+                <EuiSpacer />
+              </React.Fragment>
+            );
+          }
         )}
       </>
     );
@@ -227,7 +245,14 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
         <>
           <EuiAccordion
             id="final-response"
-            buttonContent={<h3>Final response</h3>}
+            buttonContent={
+              <h3>
+                Final response{' '}
+                {task && task.last_update_time && task.create_time
+                  ? `(Total Duration: ${formatTimeGap(task.last_update_time - task.create_time)})`
+                  : ''}
+              </h3>
+            }
             initialIsOpen={initialFinalResponseVisible.current}
           >
             <EuiText className="wrapAll markdown-output-text" size="s">
@@ -294,6 +319,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
       {traceModalData && (
         <MessageTraceModal
           messageId={traceModalData.messageId}
+          messageCreateTime={traceModalData.messageCreateTime}
           refresh={shouldTracesModalRefresh()}
           http={http}
           closeModal={() => {
