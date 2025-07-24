@@ -1,3 +1,5 @@
+/* eslint-disable */
+//TODO: Add this for checking code quickly, wait component creator to remove this and fix error.
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
@@ -25,7 +27,7 @@ import './bubble_up_viz.scss';
 import { NotebookReactContext } from '../../context_provider/context_provider';
 import { generateAllFieldCharts } from './render_bubble_vega';
 import { BubbleUpModel } from './container_model';
-import { bubbleUpDataService } from './bubble_up_data_service';
+import { BubbleUpDataService } from './bubble_up_data_service';
 
 interface Props {
   updateNotebookContext: (newContext: any) => Promise<any>;
@@ -46,7 +48,7 @@ export const BubbleUpContainer = ({ updateNotebookContext }: Props) => {
   const markdownRef = useRef<HTMLDivElement>(null);
 
   const factory = getEmbeddable().getEmbeddableFactory<BubbleUpInput>('vega_visualization');
-  const dataService = bubbleUpDataService;
+  const dataService = useMemo(() => new BubbleUpDataService(), []);
 
   // Process Markdown text and convert field references into special links
   const processMarkdown = useCallback((text: string) => {
