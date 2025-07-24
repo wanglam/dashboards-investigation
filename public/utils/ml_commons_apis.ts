@@ -147,3 +147,49 @@ export const searchMLCommonsAgents = ({
       size: 10000,
     }),
   });
+
+export const executeMLCommonsAgent = ({
+  http,
+  signal,
+  dataSourceId,
+  agentId,
+  async,
+  parameters,
+}: {
+  http: CoreStart['http'];
+  signal?: AbortSignal;
+  dataSourceId?: string;
+  agentId: string;
+  parameters: Record<string, string>;
+  async?: boolean;
+}) =>
+  callApiWithProxy({
+    http,
+    method: 'POST',
+    path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', agentId),
+    signal,
+    dataSourceId,
+    query: {
+      async: async ? 'true' : undefined,
+    },
+    body: JSON.stringify({
+      parameters,
+    }),
+  });
+
+export const getMLCommonsConfig = ({
+  http,
+  signal,
+  configName,
+}: {
+  http: CoreStart['http'];
+  signal?: AbortSignal;
+  configName: string;
+  async?: boolean;
+}) =>
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.singleConfig.replace('{configName}', configName),
+    signal,
+  });

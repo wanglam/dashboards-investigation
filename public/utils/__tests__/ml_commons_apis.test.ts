@@ -9,6 +9,8 @@ import {
   getMLCommonsMemoryMessages,
   getMLCommonsMessageTraces,
   searchMLCommonsAgents,
+  executeMLCommonsAgent,
+  getMLCommonsConfig,
 } from '../ml_commons_apis';
 import { OPENSEARCH_ML_COMMONS_API } from '../../../common/constants/ml_commons';
 
@@ -353,6 +355,254 @@ describe('ML Commons APIs', () => {
     });
   });
 
+  describe('executeMLCommonsAgent', () => {
+    it('should call callApiWithProxy with all parameters including async', async () => {
+      const mockResponse = { inference_id: 'inference-123', status: 'COMPLETED' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        signal: mockSignal,
+        dataSourceId: 'test-datasource',
+        agentId: 'agent-123',
+        parameters: { question: 'What is OpenSearch?', context: 'search engine' },
+        async: true,
+      };
+
+      const result = await executeMLCommonsAgent(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', 'agent-123'),
+          method: 'POST',
+          dataSourceId: 'test-datasource',
+          async: 'true',
+        },
+        signal: mockSignal,
+        body: JSON.stringify({
+          parameters: { question: 'What is OpenSearch?', context: 'search engine' },
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should work without async parameter (defaults to synchronous)', async () => {
+      const mockResponse = { inference_id: 'inference-456', status: 'COMPLETED' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        agentId: 'agent-456',
+        parameters: { question: 'How does ML work?' },
+      };
+
+      const result = await executeMLCommonsAgent(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', 'agent-456'),
+          method: 'POST',
+          dataSourceId: undefined,
+          async: undefined,
+        },
+        signal: undefined,
+        body: JSON.stringify({
+          parameters: { question: 'How does ML work?' },
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle async=false explicitly', async () => {
+      const mockResponse = { inference_id: 'inference-789', status: 'COMPLETED' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        agentId: 'agent-789',
+        parameters: { input: 'test input' },
+        async: false,
+        dataSourceId: 'test-datasource',
+      };
+
+      const result = await executeMLCommonsAgent(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', 'agent-789'),
+          method: 'POST',
+          dataSourceId: 'test-datasource',
+          async: undefined,
+        },
+        signal: undefined,
+        body: JSON.stringify({
+          parameters: { input: 'test input' },
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle empty parameters object', async () => {
+      const mockResponse = { inference_id: 'inference-empty', status: 'COMPLETED' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        agentId: 'agent-empty',
+        parameters: {},
+      };
+
+      const result = await executeMLCommonsAgent(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', 'agent-empty'),
+          method: 'POST',
+          dataSourceId: undefined,
+          async: undefined,
+        },
+        signal: undefined,
+        body: JSON.stringify({
+          parameters: {},
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle complex parameters with nested objects', async () => {
+      const mockResponse = { inference_id: 'inference-complex', status: 'COMPLETED' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const complexParams = {
+        question: 'Complex question',
+        context: JSON.stringify({ nested: { data: 'value' } }),
+        options: JSON.stringify(['option1', 'option2']),
+      };
+
+      const params = {
+        http: mockHttp as any,
+        agentId: 'agent-complex',
+        parameters: complexParams,
+        async: true,
+        signal: mockSignal,
+      };
+
+      const result = await executeMLCommonsAgent(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.agentExecute.replace('{agentId}', 'agent-complex'),
+          method: 'POST',
+          dataSourceId: undefined,
+          async: 'true',
+        },
+        signal: mockSignal,
+        body: JSON.stringify({
+          parameters: complexParams,
+        }),
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('getMLCommonsConfig', () => {
+    it('should call callApiWithProxy with correct parameters', async () => {
+      const mockResponse = { config_name: 'test-config', value: 'config-value' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        signal: mockSignal,
+        configName: 'test-config',
+      };
+
+      const result = await getMLCommonsConfig(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.singleConfig.replace('{configName}', 'test-config'),
+          method: 'GET',
+        },
+        signal: mockSignal,
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should work without optional signal parameter', async () => {
+      const mockResponse = { config_name: 'another-config', value: 'another-value' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        configName: 'another-config',
+      };
+
+      const result = await getMLCommonsConfig(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.singleConfig.replace('{configName}', 'another-config'),
+          method: 'GET',
+        },
+        signal: undefined,
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle config names with special characters', async () => {
+      const mockResponse = { config_name: 'config-with-special@chars', value: 'special-value' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const specialConfigName = 'config-with-special@chars';
+      const params = {
+        http: mockHttp as any,
+        configName: specialConfigName,
+        signal: mockSignal,
+      };
+
+      const result = await getMLCommonsConfig(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.singleConfig.replace('{configName}', specialConfigName),
+          method: 'GET',
+        },
+        signal: mockSignal,
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle empty config name', async () => {
+      const mockResponse = { error: 'Config not found' };
+      mockHttp.post.mockResolvedValue(mockResponse);
+
+      const params = {
+        http: mockHttp as any,
+        configName: '',
+      };
+
+      const result = await getMLCommonsConfig(params);
+
+      expect(mockHttp.post).toHaveBeenCalledWith({
+        path: '/api/console/proxy',
+        query: {
+          path: OPENSEARCH_ML_COMMONS_API.singleConfig.replace('{configName}', ''),
+          method: 'GET',
+        },
+        signal: undefined,
+      });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
   describe('Error handling', () => {
     it('should propagate errors from http.post', async () => {
       const mockError = new Error('Network error');
@@ -381,6 +631,31 @@ describe('ML Commons APIs', () => {
       abortController.abort();
 
       await expect(searchMLCommonsAgents(params)).rejects.toThrow('Request aborted');
+    });
+
+    it('should handle errors in executeMLCommonsAgent', async () => {
+      const mockError = new Error('Agent execution failed');
+      mockHttp.post.mockRejectedValue(mockError);
+
+      const params = {
+        http: mockHttp as any,
+        agentId: 'failing-agent',
+        parameters: { question: 'test' },
+      };
+
+      await expect(executeMLCommonsAgent(params)).rejects.toThrow('Agent execution failed');
+    });
+
+    it('should handle errors in getMLCommonsConfig', async () => {
+      const mockError = new Error('Config not found');
+      mockHttp.post.mockRejectedValue(mockError);
+
+      const params = {
+        http: mockHttp as any,
+        configName: 'non-existent-config',
+      };
+
+      await expect(getMLCommonsConfig(params)).rejects.toThrow('Config not found');
     });
   });
 
