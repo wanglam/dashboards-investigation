@@ -185,7 +185,6 @@ export const getMLCommonsConfig = ({
   http: CoreStart['http'];
   signal?: AbortSignal;
   configName: string;
-  async?: boolean;
 }) =>
   callApiWithProxy({
     http,
