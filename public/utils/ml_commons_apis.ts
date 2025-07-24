@@ -3,8 +3,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { INVESTIGATION_ML_COMMONS_API } from '../../common/constants/ml_commons';
-import { CoreStart } from '../../../../src/core/public';
+import {
+  OPENSEARCH_ML_COMMONS_API,
+  INVESTIGATION_ML_COMMONS_API,
+} from '../../common/constants/ml_commons';
+import { CoreStart, HttpFetchQuery } from '../../../../src/core/public';
+
+const callApiWithProxy = ({
+  path,
+  http,
+  method,
+  query,
+  signal,
+  dataSourceId,
+}: {
+  path: string;
+  http: CoreStart['http'];
+  method: string;
+  query?: HttpFetchQuery;
+  signal?: AbortSignal;
+  dataSourceId?: string;
+}) =>
+  http.post({
+    path: '/api/console/proxy',
+    query: {
+      ...query,
+      path,
+      method,
+      dataSourceId,
+    },
+    signal,
+  });
 
 export const getMLCommonsTask = async ({
   http,
@@ -17,11 +46,12 @@ export const getMLCommonsTask = async ({
   signal?: AbortSignal;
   dataSourceId?: string;
 }) =>
-  http.get(INVESTIGATION_ML_COMMONS_API.singleTask.replace('{taskId}', taskId), {
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.singleTask.replace('{taskId}', taskId),
     signal,
-    query: {
-      data_source_id: dataSourceId,
-    },
+    dataSourceId,
   });
 
 export const getMLCommonsMemory = async ({
@@ -101,10 +131,13 @@ export const getMLCommonsMessageTraces = async ({
   dataSourceId?: string;
   nextToken?: number;
 }) =>
-  http.get(INVESTIGATION_ML_COMMONS_API.messageTraces.replace('{messageId}', messageId), {
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.messageTraces.replace('{messageId}', messageId),
     signal,
+    dataSourceId,
     query: {
-      data_source_id: dataSourceId,
       next_token: nextToken,
     },
   });
