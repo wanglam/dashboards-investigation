@@ -3,10 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  OPENSEARCH_ML_COMMONS_API,
-  INVESTIGATION_ML_COMMONS_API,
-} from '../../common/constants/ml_commons';
+import { OPENSEARCH_ML_COMMONS_API } from '../../common/constants/ml_commons';
 import { CoreStart, HttpFetchQuery } from '../../../../src/core/public';
 
 const callApiWithProxy = ({
@@ -69,13 +66,16 @@ export const getMLCommonsMemory = async ({
   size?: number;
   sort?: { [key: string]: 'asc' | 'desc' };
 }) =>
-  http.get(INVESTIGATION_ML_COMMONS_API.memory, {
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.memorySearch,
     signal,
+    dataSourceId,
     query: {
-      data_source_id: dataSourceId,
       ...(query ? { query: JSON.stringify(query) } : {}),
       ...(size ? { size } : {}),
-      ...(sort ? { query: JSON.stringify(sort) } : {}),
+      ...(sort ? { sort: JSON.stringify([sort]) } : {}),
     },
   });
 
@@ -90,11 +90,12 @@ export const getMLCommonsSingleMemory = async ({
   dataSourceId?: string;
   memoryId: string;
 }) =>
-  http.get(INVESTIGATION_ML_COMMONS_API.singleMemory.replace('{memoryId}', memoryId), {
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.singleMemory.replace('{memoryId}', memoryId),
     signal,
-    query: {
-      data_source_id: dataSourceId,
-    },
+    dataSourceId,
   });
 
 export const getMLCommonsMemoryMessages = async ({
@@ -110,11 +111,14 @@ export const getMLCommonsMemoryMessages = async ({
   dataSourceId?: string;
   nextToken?: string;
 }) =>
-  http.get(INVESTIGATION_ML_COMMONS_API.memoryMessages.replace('{memoryId}', memoryId), {
+  callApiWithProxy({
+    http,
+    method: 'GET',
+    path: OPENSEARCH_ML_COMMONS_API.memoryMessages.replace('{memoryId}', memoryId),
     signal,
+    dataSourceId,
     query: {
-      data_source_id: dataSourceId,
-      next_token: nextToken,
+      ...(nextToken ? { next_token: nextToken } : {}),
     },
   });
 
