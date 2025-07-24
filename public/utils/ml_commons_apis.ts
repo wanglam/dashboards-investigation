@@ -13,6 +13,7 @@ const callApiWithProxy = ({
   query,
   signal,
   dataSourceId,
+  body,
 }: {
   path: string;
   http: CoreStart['http'];
@@ -20,6 +21,7 @@ const callApiWithProxy = ({
   query?: HttpFetchQuery;
   signal?: AbortSignal;
   dataSourceId?: string;
+  body?: BodyInit;
 }) =>
   http.post({
     path: '/api/console/proxy',
@@ -30,6 +32,7 @@ const callApiWithProxy = ({
       dataSourceId,
     },
     signal,
+    body,
   });
 
 export const getMLCommonsTask = async ({
@@ -49,34 +52,6 @@ export const getMLCommonsTask = async ({
     path: OPENSEARCH_ML_COMMONS_API.singleTask.replace('{taskId}', taskId),
     signal,
     dataSourceId,
-  });
-
-export const getMLCommonsMemory = async ({
-  http,
-  signal,
-  dataSourceId,
-  query,
-  size,
-  sort,
-}: {
-  http: CoreStart['http'];
-  signal?: AbortSignal;
-  dataSourceId?: string;
-  query?: { [key: string]: any };
-  size?: number;
-  sort?: { [key: string]: 'asc' | 'desc' };
-}) =>
-  callApiWithProxy({
-    http,
-    method: 'GET',
-    path: OPENSEARCH_ML_COMMONS_API.memorySearch,
-    signal,
-    dataSourceId,
-    query: {
-      ...(query ? { query: JSON.stringify(query) } : {}),
-      ...(size ? { size } : {}),
-      ...(sort ? { sort: JSON.stringify([sort]) } : {}),
-    },
   });
 
 export const getMLCommonsSingleMemory = async ({
@@ -144,4 +119,31 @@ export const getMLCommonsMessageTraces = async ({
     query: {
       next_token: nextToken,
     },
+  });
+
+export const searchMLCommonsAgents = ({
+  http,
+  signal,
+  dataSourceId,
+  types,
+}: {
+  http: CoreStart['http'];
+  signal?: AbortSignal;
+  dataSourceId?: string;
+  types: string[];
+}) =>
+  callApiWithProxy({
+    http,
+    method: 'POST',
+    path: OPENSEARCH_ML_COMMONS_API.agentsSearch,
+    signal,
+    dataSourceId,
+    body: JSON.stringify({
+      query: {
+        terms: {
+          type: types,
+        },
+      },
+      size: 10000,
+    }),
   });
