@@ -8,7 +8,6 @@
 import React, { useCallback, useContext, useMemo, useState, useRef, useEffect } from 'react';
 import {
   EuiAccordion,
-  EuiFlexGrid,
   EuiFlexGroup,
   EuiFlexItem,
   EuiMarkdownFormat,
@@ -33,7 +32,7 @@ interface Props {
   updateNotebookContext: (newContext: any) => Promise<any>;
 }
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 3;
 
 export const BubbleUpContainer = ({ updateNotebookContext }: Props) => {
   const context = useContext(NotebookReactContext);
@@ -251,7 +250,7 @@ export const BubbleUpContainer = ({ updateNotebookContext }: Props) => {
       initialIsOpen={true}
     >
       <EuiSpacer size="m" />
-      <EuiFlexGrid columns={4}>
+      <EuiFlexGroup>
         {paginatedSpecs.map((spec, index) => {
           // const uniqueKey = selectedField
           //   ? `${selectedField}-${index}`
@@ -264,7 +263,7 @@ export const BubbleUpContainer = ({ updateNotebookContext }: Props) => {
           const uniqueId = `text2viz-${activePage * ITEMS_PER_PAGE + index}`;
 
           return (
-            <EuiFlexItem key={uniqueKey} style={{ height: 300, width: 300 }}>
+            <EuiFlexItem grow={false} key={uniqueKey} style={{ height: 300, width: 300 }}>
               {factory && spec && (
                 <EmbeddableRenderer
                   factory={factory}
@@ -278,7 +277,7 @@ export const BubbleUpContainer = ({ updateNotebookContext }: Props) => {
             </EuiFlexItem>
           );
         })}
-      </EuiFlexGrid>
+      </EuiFlexGroup>
       <EuiSpacer size="m" />
       {totalPages > 1 && (
         <EuiFlexGroup justifyContent="center">
