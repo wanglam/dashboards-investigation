@@ -7,14 +7,18 @@ import { useContext } from 'react';
 import { NOTEBOOKS_API_PREFIX } from '../../common/constants/notebooks';
 import { NotebookReactContext } from '../components/notebooks/context_provider/context_provider';
 import { ACTION_TYPES } from '../components/notebooks/reducers/notebook_reducer';
+import { ParagraphState, ParagraphStateValue } from '../state/paragraph_state';
+import { ParaType } from '../../common/types/notebooks';
 
 export const useParagraphs = () => {
   const context = useContext(NotebookReactContext);
+  const { http } = context;
+  const { id } = context.state.value;
   return {
     createParagraph: (index: number, newParaContent: string, inpType: string) => {
-      const paragraphs = context.reducer.state.value.paragraphs.map((item) => item.value);
+      const paragraphs = context.state.value.paragraphs.map((item) => item.value);
       const addParaObj = {
-        noteId: context.reducer.state.value.id,
+        noteId: context.state.value.id,
         paragraphIndex: index,
         paragraphInput: newParaContent,
         inputType: inpType,
@@ -27,13 +31,54 @@ export const useParagraphs = () => {
         .then((res) => {
           const newParagraphs = [...paragraphs];
           newParagraphs.splice(index, 0, res);
-          context.reducer.dispatch({
+          context.dispatch({
             actionType: ACTION_TYPES.UPDATE_PARAGRAPHS,
             payload: {
               paragraphs: newParagraphs,
             },
           });
         });
+    },
+    deleteParagraph: (para: ParaType, index: number) => {
+      if (index < 0) {
+        return Promise.reject('Please provide a valid paragraph index');
+      }
+
+      return http
+        .delete(`${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph`, {
+          query: {
+            noteId: id,
+            paragraphId: para.uniqueId,
+          },
+        })
+        .then((_res) => {
+          const currentParagraphs = context.state.value.paragraphs.map((value) => value.value);
+          const newParagraphs = [...currentParagraphs];
+          newParagraphs.splice(index, 1);
+          context.state.updateParagraphs(newParagraphs);
+          return _res;
+        });
+    },
+    // Assigns Loading, Running & inQueue for paragraphs in current notebook
+    showParagraphRunning: (param: number | string) => {
+      const newParas = context.state.value.paragraphs;
+      newParas.forEach((_: ParagraphState, index: number) => {
+        const payload: Partial<ParagraphStateValue> = {};
+        let updateIndex = -1;
+        if (param === 'queue') {
+          updateIndex = index;
+          payload.inQueue = true;
+        } else if (param === 'loading') {
+          updateIndex = index;
+          payload.isRunning = true;
+        } else if (param === index) {
+          updateIndex = index;
+          payload.isRunning = true;
+        }
+        if (updateIndex > -1) {
+          context.state.value.paragraphs[updateIndex].updateValue(payload);
+        }
+      });
     },
   };
 };
