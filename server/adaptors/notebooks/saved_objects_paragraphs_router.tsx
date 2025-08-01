@@ -5,6 +5,7 @@
 
 import now from 'performance-now';
 import { v4 as uuid } from 'uuid';
+import { LOG_PATTERN_PARAGRAPH_TYPE } from '../../../common/constants/notebooks';
 import { SavedObjectsClientContract, SavedObject } from '../../../../../src/core/server/types';
 import { NOTEBOOK_SAVED_OBJECT } from '../../../common/types/observability_saved_object_attributes';
 import {
@@ -33,6 +34,9 @@ export function createNotebook(paragraphInput: string, inputType: string) {
       paragraphType = inputType;
     }
     if (inputType === 'ANOMALY_VISUALIZATION_ANALYSIS') {
+      paragraphType = inputType;
+    }
+    if (inputType === LOG_PATTERN_PARAGRAPH_TYPE) {
       paragraphType = inputType;
     }
     const inputObject = {
@@ -259,6 +263,15 @@ export async function runParagraph(
           updatedParagraph.output = [
             {
               outputType: 'OBSERVABILITY_VISUALIZATION',
+              result: '',
+              execution_time: `${(now() - startTime).toFixed(3)} ms`,
+            },
+          ];
+        } else if (paragraphs[index].input.inputType === 'LOG_PATTERN') {
+          updatedParagraph.dateModified = new Date().toISOString();
+          updatedParagraph.output = [
+            {
+              outputType: 'LOG_PATTERN',
               result: '',
               execution_time: `${(now() - startTime).toFixed(3)} ms`,
             },
