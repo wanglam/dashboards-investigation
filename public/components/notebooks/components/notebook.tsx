@@ -37,7 +37,7 @@ import { useObservable } from 'react-use';
 import { useCallback } from 'react';
 import { useMemo } from 'react';
 import { i18n } from '@osd/i18n';
-import { ParagraphStateValue } from '../../../../common/state/paragraph_state';
+import { ParagraphState, ParagraphStateValue } from '../../../../common/state/paragraph_state';
 import { CoreStart, SavedObjectsStart } from '../../../../../../src/core/public';
 import { DashboardStart } from '../../../../../../src/plugins/dashboard/public';
 import { DataSourceManagementPluginSetup } from '../../../../../../src/plugins/data_source_management/public';
@@ -465,12 +465,8 @@ export function NotebookComponent({
           }
         }
         const newParagraphs = [...paragraphs];
-        const modifiedParagraphIndex = newParagraphs.findIndex(
-          (paragraph) => paragraph.id === para.uniqueId
-        );
-        if (res.output?.[0]?.outputType === 'DEEP_RESEARCH' && modifiedParagraphIndex !== -1) {
-          newParagraphs[modifiedParagraphIndex] = res;
-        }
+        const paragraphStateValue = new ParagraphState(res).value;
+        newParagraphs[index] = paragraphStateValue;
         setParagraphs(newParagraphs);
       })
       .catch((err) => {
