@@ -18,7 +18,7 @@ import {
 } from '../../common/helpers/notebooks/default_notebook_schema';
 import { formatNotRecognized, inputIsQuery } from '../../common/helpers/notebooks/query_helpers';
 import { RequestHandlerContext } from '../../../../../src/core/server';
-import { constructDeepResearchParagraphOut, getInputType } from '../../../common/utils/paragraph';
+import { getInputType } from '../../../common/utils/paragraph';
 import { updateParagraphText } from '../../common/helpers/notebooks/paragraph';
 import { NotebookContext, ParagraphBackendType } from '../../../common/types/notebooks';
 import { getNotebookTopLevelContextPrompt, getOpenSearchClientTransport } from '../../routes/utils';
@@ -227,7 +227,7 @@ export async function updateRunFetchParagraph(
 }
 
 export async function runParagraph(
-  paragraphs: ParagraphBackendType[],
+  paragraphs: Array<ParagraphBackendType<string | { taskId: string; memoryId?: string }>>,
   paragraphId: string,
   context: RequestHandlerContext,
   deepResearchAgentId: string | undefined,
@@ -343,16 +343,10 @@ export async function runParagraph(
           updatedParagraph.output = [
             {
               outputType: 'DEEP_RESEARCH',
-              result: JSON.stringify(
-                constructDeepResearchParagraphOut({
-                  taskId: body.task_id,
-                  memoryId: body.response?.memory_id,
-                  parentInteractionId: body.response?.parent_interaction_id,
-                  agentId: deepResearchAgentId,
-                  state: body.status,
-                  baseMemoryId: deepResearchBaseMemoryId,
-                })
-              ),
+              result: {
+                taskId: body.task_id,
+                memoryId: body.response?.memory_id,
+              },
               execution_time: `${(now() - startTime).toFixed(3)} ms`,
             },
           ];
