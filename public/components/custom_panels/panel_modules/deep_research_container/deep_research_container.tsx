@@ -256,7 +256,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
         <EuiButton
           isLoading={loadingSteps}
           onClick={async () => {
-            if (!parsedParagraphOut) {
+            if (!task) {
               return;
             }
             if (traces.length > 0) {
@@ -265,10 +265,8 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
             }
             setLoadingSteps(true);
             try {
-              const {
-                parent_interaction_id: parentInteractionId,
-                executor_memory_id: executorMemoryId,
-              } = parsedParagraphOut;
+              const parentInteractionId = extractParentInteractionId(task);
+              const executorMemoryId = extractExecutorMemoryId(task);
               await Promise.allSettled([
                 parentInteractionId
                   ? getAllTracesByMessageId({
