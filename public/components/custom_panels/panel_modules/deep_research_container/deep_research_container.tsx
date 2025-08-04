@@ -16,18 +16,25 @@ import {
   EuiMarkdownFormat,
   EuiTabbedContent,
 } from '@elastic/eui';
-import { interval, Observable } from 'rxjs';
+import { interval, Observable, timer } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
 
 import { ParagraphStateValue } from 'common/state/paragraph_state';
-import { useObservable } from 'react-use';
+import { useObservable, useUpdateEffect } from 'react-use';
 import { CoreStart } from '../../../../../../../src/core/public';
 import { ParaType } from '../../../../../common/types/notebooks';
 
 import { getAllMessagesByMemoryId, getAllTracesByMessageId, isMarkdownText } from './utils';
 import { MessageTraceModal } from './message_trace_modal';
 import { parseParagraphOut } from '../../../../utils/paragraph';
-import { isStateCompletedOrFailed } from '../../../../utils/task';
+import {
+  extractCompletedResponse,
+  extractFailedErrorMessage,
+  extractExecutorMemoryId,
+  extractParentInteractionId,
+  isStateCompletedOrFailed,
+} from '../../../../utils/task';
+import { getMLCommonsTask } from '../../../../utils/ml_commons_apis';
 
 interface Props {
   http: CoreStart['http'];
@@ -37,44 +44,78 @@ interface Props {
 
 export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   const [traces, setTraces] = useState([]);
+  // FIXME: Read paragraph out directly once all notebooks store object as output
   const parsedParagraphOut = useMemo(() => parseParagraphOut(para)[0], [para]);
-  const [isLoading, setIsLoading] = useState(isStateCompletedOrFailed(parsedParagraphOut.state));
-  const [tracesVisible, setTracesVisible] = useState(!isStateCompletedOrFailed(parseParagraphOut));
+  // FIXME: Remove legacy task_id support here
+  const taskId = parsedParagraphOut.taskId ?? parsedParagraphOut.task_id;
+  const [tracesVisible, setTracesVisible] = useState(false);
   const [executorMessages, setExecutorMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState(false);
   const [showContextModal, setShowContextModal] = useState(false);
   const [traceModalData, setTraceModalData] = useState<{
     messageId: string;
     refresh: boolean;
   }>();
+  const [task, setTask] = useState();
   const initialFinalResponseVisible = useRef(false);
-  const parsedParagraphOutRef = useRef(parsedParagraphOut);
-  parsedParagraphOutRef.current = parsedParagraphOut;
   const dataSourceIdRef = useRef(para.dataSourceMDSId);
   dataSourceIdRef.current = para.dataSourceMDSId;
   const paragraph = useObservable(paragraph$);
+  const taskLoaded = !!task;
+  const taskFinished = taskLoaded && isStateCompletedOrFailed(task.state);
+  const taskRef = useRef(task);
+  taskRef.current = task;
 
   const finalMessage = useMemo(() => {
-    if (!parsedParagraphOut) {
+    if (!task) {
       return '';
     }
-    const { state, text_response: textResponse } = parsedParagraphOut;
-    if (state === 'COMPLETED') {
-      return textResponse ?? 'Task was completed, but failed to load inference result.';
+    if (task.state === 'COMPLETED') {
+      return (
+        extractCompletedResponse(task) ?? 'Task was completed, but failed to load inference result.'
+      );
     }
 
-    if (state === 'FAILED') {
-      return `Failed to execute task, reason: ${textResponse}`.trim();
+    if (task.state === 'FAILED') {
+      return `Failed to execute task, reason: ${extractFailedErrorMessage(task)}`.trim();
     }
     return '';
-  }, [parsedParagraphOut]);
+  }, [task]);
 
   useEffect(() => {
-    setIsLoading(!isStateCompletedOrFailed(parsedParagraphOut.state));
-  }, [parsedParagraphOut]);
+    const abortController = new AbortController();
+    const subscription = timer(0, 5000)
+      .pipe(
+        switchMap(() => {
+          return getMLCommonsTask({
+            http,
+            taskId,
+            dataSourceId: para.dataSourceMDSId,
+            signal: abortController.signal,
+          });
+        })
+      )
+      .pipe(takeWhile((res) => !isStateCompletedOrFailed(res.state), true))
+      .subscribe((newTask) => {
+        setTask((previousTask) => {
+          if (previousTask?.state === newTask.state) {
+            return previousTask;
+          }
+          return { taskId, ...newTask };
+        });
+      });
+    return () => {
+      subscription.unsubscribe();
+      abortController.abort('unmount...');
+    };
+  }, [taskId, para.dataSourceMDSId, http]);
 
   useEffect(() => {
-    if (isStateCompletedOrFailed(parsedParagraphOut.state)) {
+    if (!taskLoaded) {
+      return;
+    }
+    if (taskFinished) {
       setTracesVisible(false);
       return;
     }
@@ -82,10 +123,12 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
     const subscription = interval(5000)
       .pipe(
         switchMap(() => {
-          const {
-            parent_interaction_id: parentInteractionId,
-            executor_memory_id: executorMemoryId,
-          } = parsedParagraphOut;
+          const parentInteractionId = taskRef.current
+            ? extractParentInteractionId(taskRef.current)
+            : undefined;
+          const executorMemoryId = taskRef.current
+            ? extractExecutorMemoryId(taskRef.current)
+            : undefined;
 
           return Promise.allSettled([
             parentInteractionId
@@ -107,11 +150,6 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
           ]);
         })
       )
-      .pipe(
-        takeWhile(() => {
-          return !isStateCompletedOrFailed(parsedParagraphOut.state);
-        }, true)
-      )
       .subscribe(([{ value: loadedTraces }, { value: loadedExecutorMessages }]) => {
         setTraces(loadedTraces);
         setExecutorMessages(loadedExecutorMessages);
@@ -119,9 +157,22 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
 
     return () => {
       subscription.unsubscribe();
-      abortController.abort('DeepResearchContainer unmount.');
+      abortController.abort('unmount...');
     };
-  }, [parsedParagraphOut, http]);
+  }, [taskLoaded, taskFinished, http]);
+
+  useEffect(() => {
+    setIsLoading(!taskLoaded || !taskFinished);
+    if (taskLoaded && !taskFinished) {
+      setTracesVisible(true);
+    }
+  }, [taskLoaded, taskFinished]);
+
+  useUpdateEffect(() => {
+    setTask(undefined);
+    setTraces([]);
+    setExecutorMessages([]);
+  }, [taskId]);
 
   const renderTraces = () => {
     return (

@@ -31,15 +31,13 @@ import CSS from 'csstype';
 import moment from 'moment';
 import React, { useState, useEffect, useRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Subscription, timer } from 'rxjs';
-import { switchMap, takeWhile } from 'rxjs/operators';
 
 import { useContext } from 'react';
 import { useObservable } from 'react-use';
 import { useCallback } from 'react';
 import { useMemo } from 'react';
 import { i18n } from '@osd/i18n';
-import { ParagraphState, ParagraphStateValue } from '../../../../common/state/paragraph_state';
+import { ParagraphStateValue } from '../../../../common/state/paragraph_state';
 import { CoreStart, SavedObjectsStart } from '../../../../../../src/core/public';
 import { DashboardStart } from '../../../../../../src/plugins/dashboard/public';
 import { DataSourceManagementPluginSetup } from '../../../../../../src/plugins/data_source_management/public';
@@ -72,10 +70,6 @@ import {
   NotebookReactContext,
   getDefaultState,
 } from '../context_provider/context_provider';
-import { getMLCommonsTask } from '../../../utils/ml_commons_apis';
-import { parseParagraphOut } from '../../../utils/paragraph';
-import { isStateCompletedOrFailed } from '../../../utils/task';
-import { constructDeepResearchParagraphOut } from '../../../../common/utils/paragraph';
 import { InputPanel } from './input_panel';
 import { useParagraphs } from '../../../hooks/use_paragraphs';
 import { isValidUUID } from './helpers/notebooks_parser';
@@ -129,8 +123,6 @@ export function NotebookComponent({
   const [context] = useState<NotebookContext | undefined>(undefined);
   const { createParagraph, showParagraphRunning, deleteParagraph } = useParagraphs();
   const { loadNotebook: loadNotebookHook, setParagraphs } = useNotebook();
-  // Refs for task subscriptions
-  const taskSubscriptions = useRef(new Map<string, Subscription>());
   const newNavigation = chrome.navGroup.getNavGroupEnabled();
 
   const notebookContext = useContext(NotebookReactContext);
@@ -432,92 +424,6 @@ export function NotebookComponent({
     }, 0);
   };
 
-  // FIXME
-  // Move the method into PER agent paragraph
-  const registerDeepResearchParagraphUpdater = useCallback(
-    ({
-      taskId,
-      paraUniqueId,
-      agentId,
-      baseMemoryId,
-    }: {
-      taskId: string;
-      paraUniqueId: string;
-      agentId: string;
-      baseMemoryId?: string | undefined;
-    }) => {
-      const cleanTaskSubscription = () => {
-        taskSubscriptions.current.get(taskId)?.unsubscribe();
-        taskSubscriptions.current.delete(taskId);
-      };
-      taskSubscriptions.current.set(
-        taskId,
-        timer(0, 5000)
-          .pipe(
-            switchMap(() => {
-              const paragraphsValue = notebookContext.state.getParagraphsValue();
-              const uniquePara = paragraphsValue.find((para) => para.id === paraUniqueId);
-              if (!uniquePara) {
-                return 'STOP';
-              }
-              return getMLCommonsTask({
-                http,
-                taskId,
-                dataSourceId: uniquePara.dataSourceMDSId,
-              });
-            })
-          )
-          .pipe(takeWhile((res) => res !== 'STOP' && !isStateCompletedOrFailed(res.state), true))
-          .subscribe({
-            next: (payload) => {
-              const paragraphsValue = notebookContext.state.getParagraphsValue();
-              if (payload === 'STOP') {
-                cleanTaskSubscription();
-                return;
-              }
-              const currentParsedParaIndex = paragraphsValue.findIndex(
-                (para) => para.id === paraUniqueId
-              );
-              const result = JSON.stringify(
-                constructDeepResearchParagraphOut({
-                  task: payload,
-                  taskId,
-                  agentId,
-                  baseMemoryId,
-                })
-              );
-              if (
-                !isStateCompletedOrFailed(payload.state) &&
-                result === JSON.stringify(paragraphsValue[currentParsedParaIndex].output?.[0])
-              ) {
-                return;
-              }
-              if (isStateCompletedOrFailed(payload.state)) {
-                cleanTaskSubscription();
-              }
-              http.put(`${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph`, {
-                body: JSON.stringify({
-                  noteId: openedNoteId,
-                  paragraphId: paraUniqueId,
-                  paragraphOutput: [
-                    {
-                      outputType: 'DEEP_RESEARCH',
-                      result,
-                    },
-                  ],
-                }),
-              });
-            },
-            error: (...args) => {
-              console.log('Failed to fetch task status', ...args);
-              cleanTaskSubscription();
-            },
-          })
-      );
-    },
-    [http, openedNoteId, notebookContext.state]
-  );
-
   // Backend call to update and run contents of paragraph
   const updateRunParagraph = (
     para: ParaType,
@@ -559,28 +465,11 @@ export function NotebookComponent({
           }
         }
         const newParagraphs = [...paragraphs];
-        const paragraphStateValue = new ParagraphState(res).value;
-        const outputPayload = paragraphStateValue.output?.[0];
-        newParagraphs[index] = paragraphStateValue;
-
-        if (
-          outputPayload?.outputType === 'DEEP_RESEARCH' &&
-          newParagraphs[index].uiState &&
-          typeof outputPayload.result !== 'string'
-        ) {
-          newParagraphs[index].uiState.isRunning = true;
-          const legacyTaskId = outputPayload.result.task_id as string;
-          if (legacyTaskId) {
-            taskSubscriptions.current.get(legacyTaskId)?.unsubscribe();
-            taskSubscriptions.current.delete(legacyTaskId);
-          }
-          const taskId = parseParagraphOut(parsedPara[index])[0]?.task_id;
-          registerDeepResearchParagraphUpdater({
-            taskId,
-            paraUniqueId: para.uniqueId,
-            agentId: deepResearchAgentId ?? '',
-            baseMemoryId: deepResearchBaseMemoryId,
-          });
+        const modifiedParagraphIndex = newParagraphs.findIndex(
+          (paragraph) => paragraph.id === para.uniqueId
+        );
+        if (res.output?.[0]?.outputType === 'DEEP_RESEARCH' && modifiedParagraphIndex !== -1) {
+          newParagraphs[modifiedParagraphIndex] = res;
         }
         setParagraphs(newParagraphs);
       })
@@ -680,29 +569,6 @@ export function NotebookComponent({
             await loadQueryResultsFromInput(res.paragraphs[index]);
           } else if (res.paragraphs[index].output[0]?.outputType === 'QUERY') {
             await loadQueryResultsFromInput(res.paragraphs[index], '');
-          } else if (res.paragraphs[index].output[0]?.outputType === 'DEEP_RESEARCH') {
-            const currentResult = res.paragraphs[index].output[0]?.result;
-            if (!currentResult) {
-              continue;
-            }
-            const {
-              task_id: taskId,
-              agent_id: agentId,
-              state,
-              base_memory_id: baseMemoryId,
-            } = JSON.parse(currentResult);
-            const paragraphId = res.paragraphs[index].id;
-
-            if (isStateCompletedOrFailed(state)) {
-              continue;
-            }
-
-            registerDeepResearchParagraphUpdater({
-              taskId,
-              agentId,
-              paraUniqueId: paragraphId,
-              baseMemoryId,
-            });
           } else if (res.paragraphs[index].input.inputType === LOG_PATTERN_PARAGRAPH_TYPE) {
             logPatternParaExists = true;
           } else if (
@@ -738,7 +604,6 @@ export function NotebookComponent({
     createParagraph,
     notifications.toasts,
     loadQueryResultsFromInput,
-    registerDeepResearchParagraphUpdater,
     dataSourceEnabled,
     isSavedObjectNotebook,
     notebookContext.state,
