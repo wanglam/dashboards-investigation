@@ -4,10 +4,23 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import MarkdownRender from '@nteract/markdown';
-import { EuiButton, EuiLoadingContent, EuiText, EuiAccordion, EuiSpacer } from '@elastic/eui';
-import { interval } from 'rxjs';
+import {
+  EuiButton,
+  EuiLoadingContent,
+  EuiText,
+  EuiAccordion,
+  EuiSpacer,
+  EuiModal,
+  EuiModalHeader,
+  EuiModalBody,
+  EuiMarkdownFormat,
+  EuiTabbedContent,
+} from '@elastic/eui';
+import { interval, Observable } from 'rxjs';
 import { switchMap, takeWhile } from 'rxjs/operators';
 
+import { ParagraphStateValue } from 'common/state/paragraph_state';
+import { useObservable } from 'react-use';
 import { CoreStart } from '../../../../../../../src/core/public';
 import { ParaType } from '../../../../../common/types/notebooks';
 
@@ -19,15 +32,17 @@ import { isStateCompletedOrFailed } from '../../../../utils/task';
 interface Props {
   http: CoreStart['http'];
   para: ParaType;
+  paragraph$: Observable<ParagraphStateValue>;
 }
 
-export const DeepResearchContainer = ({ para, http }: Props) => {
+export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   const [traces, setTraces] = useState([]);
   const parsedParagraphOut = useMemo(() => parseParagraphOut(para)[0], [para]);
   const [isLoading, setIsLoading] = useState(isStateCompletedOrFailed(parsedParagraphOut.state));
   const [tracesVisible, setTracesVisible] = useState(!isStateCompletedOrFailed(parseParagraphOut));
   const [executorMessages, setExecutorMessages] = useState([]);
   const [loadingSteps, setLoadingSteps] = useState(false);
+  const [showContextModal, setShowContextModal] = useState(false);
   const [traceModalData, setTraceModalData] = useState<{
     messageId: string;
     refresh: boolean;
@@ -37,6 +52,7 @@ export const DeepResearchContainer = ({ para, http }: Props) => {
   parsedParagraphOutRef.current = parsedParagraphOut;
   const dataSourceIdRef = useRef(para.dataSourceMDSId);
   dataSourceIdRef.current = para.dataSourceMDSId;
+  const paragraph = useObservable(paragraph$);
 
   const finalMessage = useMemo(() => {
     if (!parsedParagraphOut) {
@@ -105,7 +121,7 @@ export const DeepResearchContainer = ({ para, http }: Props) => {
       subscription.unsubscribe();
       abortController.abort('DeepResearchContainer unmount.');
     };
-  }, [parsedParagraphOut.state, http]);
+  }, [parsedParagraphOut, http]);
 
   const renderTraces = () => {
     return (
@@ -178,6 +194,11 @@ export const DeepResearchContainer = ({ para, http }: Props) => {
           <EuiSpacer />
         </>
       )}
+      {paragraph?.output && (
+        <EuiButton style={{ marginRight: '10px' }} onClick={() => setShowContextModal(true)}>
+          Show agent request details
+        </EuiButton>
+      )}
       {isLoading ? (
         <EuiLoadingContent />
       ) : (
@@ -235,6 +256,50 @@ export const DeepResearchContainer = ({ para, http }: Props) => {
           }}
           dataSourceId={para.dataSourceMDSId}
         />
+      )}
+      {/* FIXME this is used for debug */}
+      {showContextModal && (
+        <EuiModal onClose={() => setShowContextModal(false)}>
+          <EuiModalHeader>Context</EuiModalHeader>
+          <EuiModalBody>
+            <EuiTabbedContent
+              tabs={[
+                {
+                  id: 'agentInput',
+                  name: 'Agent input',
+                  content: (
+                    <>
+                      <EuiMarkdownFormat>
+                        {`\`\`\`json
+${JSON.stringify(
+  {
+    ...paragraph?.input.PERAgentInput,
+    body: JSON.parse(paragraph?.input.PERAgentInput.body),
+  },
+  null,
+  2
+)}
+                      \`\`\`
+                      `}
+                      </EuiMarkdownFormat>
+                    </>
+                  ),
+                },
+                {
+                  id: 'agentContext',
+                  name: 'Agent context',
+                  content: (
+                    <>
+                      <EuiMarkdownFormat>
+                        {paragraph?.input.PERAgentContext || 'No context'}
+                      </EuiMarkdownFormat>
+                    </>
+                  ),
+                },
+              ]}
+            />
+          </EuiModalBody>
+        </EuiModal>
       )}
     </div>
   );

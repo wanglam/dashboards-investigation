@@ -39,11 +39,12 @@ import { useObservable } from 'react-use';
 import { useCallback } from 'react';
 import { useMemo } from 'react';
 import { i18n } from '@osd/i18n';
-import { ParagraphState, ParagraphStateValue } from '../../../state/paragraph_state';
+import { ParagraphState, ParagraphStateValue } from '../../../../common/state/paragraph_state';
 import { CoreStart, SavedObjectsStart } from '../../../../../../src/core/public';
 import { DashboardStart } from '../../../../../../src/plugins/dashboard/public';
 import { DataSourceManagementPluginSetup } from '../../../../../../src/plugins/data_source_management/public';
 import {
+  ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE,
   CREATE_NOTE_MESSAGE,
   LOG_PATTERN_PARAGRAPH_TYPE,
   NOTEBOOKS_API_PREFIX,
@@ -69,6 +70,7 @@ import { ContextPanel } from './context_panel';
 import {
   NotebookContextProvider,
   NotebookReactContext,
+  getDefaultState,
 } from '../context_provider/context_provider';
 import { getMLCommonsTask } from '../../../utils/ml_commons_apis';
 import { parseParagraphOut } from '../../../utils/paragraph';
@@ -703,7 +705,9 @@ export function NotebookComponent({
             });
           } else if (res.paragraphs[index].input.inputType === LOG_PATTERN_PARAGRAPH_TYPE) {
             logPatternParaExists = true;
-          } else if (res.paragraphs[index].input.inputType === 'ANOMALY_VISUALIZATION_ANALYSIS') {
+          } else if (
+            res.paragraphs[index].input.inputType === ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE
+          ) {
             bubbleUpParaExists = true;
           }
         }
@@ -712,7 +716,7 @@ export function NotebookComponent({
         if (!bubbleUpParaExists) {
           const resContext = res.context;
           if (resContext?.filters && resContext?.timeRange && resContext?.index) {
-            await createParagraph(0, '', 'ANOMALY_VISUALIZATION_ANALYSIS');
+            await createParagraph(0, '', ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE);
           }
         }
         if (!logPatternParaExists) {
@@ -1137,12 +1141,14 @@ export function NotebookComponent({
 }
 
 export const Notebook = (props: NotebookProps) => {
+  const stateRef = useRef(
+    getDefaultState({
+      id: props.openedNoteId,
+      dataSourceEnabled: props.dataSourceEnabled,
+    })
+  );
   return (
-    <NotebookContextProvider
-      notebookId={props.openedNoteId}
-      http={props.http}
-      dataSourceEnabled={props.dataSourceEnabled}
-    >
+    <NotebookContextProvider state={stateRef.current}>
       <NotebookComponent {...props} />
     </NotebookContextProvider>
   );

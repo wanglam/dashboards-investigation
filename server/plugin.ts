@@ -4,6 +4,11 @@
  */
 
 import {
+  ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE,
+  LOG_PATTERN_PARAGRAPH_TYPE,
+  PPL_PARAGRAPH_TYPE,
+} from '../common/constants/notebooks';
+import {
   CoreSetup,
   CoreStart,
   ILegacyClusterClient,
@@ -16,7 +21,13 @@ import { DataSourceManagementPlugin } from '../../../src/plugins/data_source_man
 import { PPLPlugin } from './adaptors/ppl_plugin';
 import { setupRoutes } from './routes/index';
 import { notebookSavedObject } from './saved_objects/observability_saved_object';
+import { ParagraphService } from './services/paragraph_service';
 import { ObservabilityPluginSetup, ObservabilityPluginStart } from './types';
+import { AnomalyVisualizationAnalysisParagraph } from './paragraphs/anomaly_visualization_analytics';
+import { setClusterClient, setParagraphServiceSetup, setQueryService } from './services/get_set';
+import { QueryService } from './services/query_service';
+import { PPLParagraph } from './paragraphs/ppl';
+import { LogPatternParagraph } from './paragraphs/log_sequence';
 
 export interface ObservabilityPluginSetupDependencies {
   dataSourceManagement: ReturnType<DataSourceManagementPlugin['setup']>;
@@ -26,9 +37,11 @@ export interface ObservabilityPluginSetupDependencies {
 export class ObservabilityPlugin
   implements Plugin<ObservabilityPluginSetup, ObservabilityPluginStart> {
   private readonly logger: Logger;
+  private paragraphService: ParagraphService;
 
   constructor(private readonly initializerContext: PluginInitializerContext) {
     this.logger = initializerContext.logger.get();
+    this.paragraphService = new ParagraphService();
   }
 
   public async setup(
@@ -48,16 +61,29 @@ export class ObservabilityPlugin
         plugins: [PPLPlugin],
       }
     );
+
+    setClusterClient(openSearchObservabilityClient);
+    setQueryService(new QueryService(this.logger));
+
     if (dataSourceEnabled) {
       dataSource.registerCustomApiSchema(PPLPlugin);
     }
 
+    const paragraphServiceSetup = this.paragraphService.setup();
+
+    setParagraphServiceSetup(paragraphServiceSetup);
+
+    paragraphServiceSetup.register(
+      ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE,
+      AnomalyVisualizationAnalysisParagraph
+    );
+    paragraphServiceSetup.register(PPL_PARAGRAPH_TYPE, PPLParagraph);
+    paragraphServiceSetup.register(LOG_PATTERN_PARAGRAPH_TYPE, LogPatternParagraph);
+
     // Register server side APIs
     setupRoutes({
       router,
-      client: openSearchObservabilityClient,
       dataSourceEnabled,
-      logger: this.logger,
     });
 
     core.savedObjects.registerType(notebookSavedObject);
