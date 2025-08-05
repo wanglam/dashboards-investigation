@@ -129,8 +129,6 @@ export function registerParaRoute(router: IRouter) {
           dataSourceMDSId: schema.maybe(schema.string({ defaultValue: '' })),
           dataSourceMDSLabel: schema.maybe(schema.string({ defaultValue: '' })),
           deepResearchAgentId: schema.maybe(schema.string()),
-          deepResearchContext: schema.maybe(schema.string()),
-          deepResearchBaseMemoryId: schema.maybe(schema.string()),
         }),
       },
     },
