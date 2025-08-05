@@ -24,6 +24,11 @@ import { NotebookContext, ParagraphBackendType } from '../../../common/types/not
 import { getNotebookTopLevelContextPrompt, getOpenSearchClientTransport } from '../../routes/utils';
 import { getParagraphServiceSetup } from '../../services/get_set';
 
+interface DeepResearchParagraphResult {
+  taskId: string;
+  memoryId?: string;
+}
+
 export function createNotebook(paragraphInput: string, inputType: string) {
   try {
     let paragraphType = 'MARKDOWN';
@@ -163,8 +168,6 @@ export async function updateRunFetchParagraph(
     dataSourceMDSId: string | undefined;
     dataSourceMDSLabel: string | undefined;
     deepResearchAgentId?: string | undefined;
-    deepResearchContext?: string | undefined;
-    deepResearchBaseMemoryId?: string | undefined;
   },
   opensearchNotebooksClient: SavedObjectsClientContract,
   context: RequestHandlerContext
@@ -200,15 +203,31 @@ export async function updateRunFetchParagraph(
       params.paragraphId,
       context,
       deepResearchAgentId,
-      params.deepResearchContext,
-      params.deepResearchBaseMemoryId,
       notebookInfo
     );
 
-    const updateNotebook = {
+    const updateNotebook: {
+      paragraphs: Array<ParagraphBackendType<string | DeepResearchParagraphResult>>;
+      dateModified: string;
+      context?: NotebookContext;
+    } = {
       paragraphs: updatedOutputParagraphs,
       dateModified: new Date().toISOString(),
     };
+    const notebookContext = notebookInfo.attributes.savedNotebook?.context;
+    if (notebookContext && !notebookContext.memoryId) {
+      const targetParagraph = updatedOutputParagraphs.find(({ id }) => id === params.paragraphId);
+      if (targetParagraph?.output?.[0]?.outputType === 'DEEP_RESEARCH') {
+        const { result } = targetParagraph.output[0];
+
+        if (typeof result !== 'string' && 'memoryId' in result) {
+          updateNotebook.context = {
+            ...notebookContext,
+            memoryId: result.memoryId,
+          };
+        }
+      }
+    }
     await opensearchNotebooksClient.update(NOTEBOOK_SAVED_OBJECT, params.noteId, {
       savedNotebook: updateNotebook,
     });
@@ -231,8 +250,6 @@ export async function runParagraph(
   paragraphId: string,
   context: RequestHandlerContext,
   deepResearchAgentId: string | undefined,
-  deepResearchContext: string | undefined,
-  deepResearchBaseMemoryId: string | undefined,
   notebookinfo: SavedObject<{ savedNotebook: { context?: NotebookContext } }>
 ) {
   try {
@@ -318,15 +335,14 @@ export async function runParagraph(
             context,
             dataSourceId: paragraphs[index].dataSourceMDSId,
           });
+          const baseMemoryId = notebookinfo.attributes.savedNotebook.context?.memoryId;
           const payload = {
             method: 'POST',
             path: `/_plugins/_ml/agents/${deepResearchAgentId}/_execute`,
             querystring: 'async=true',
             body: {
               parameters: {
-                question: `${paragraphs[index].input.inputText}${
-                  deepResearchContext ? `, Context: ${deepResearchContext}` : ''
-                }`,
+                question: paragraphs[index].input.inputText,
                 planner_prompt_template:
                   '${parameters.planner_prompt} \n Objective: ${parameters.user_prompt} \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n${parameters.plan_execute_reflect_response_format}',
                 planner_with_history_template:
@@ -335,7 +351,7 @@ export async function runParagraph(
                   '${parameters.planner_prompt} \n Objective: ${parameters.user_prompt} \n\n Original plan:\n[${parameters.steps}] \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps: \n[${parameters.completed_steps}] \n\n ${parameters.reflect_prompt} \n\n ${parameters.plan_execute_reflect_response_format}',
                 context: contextContent,
                 executor_system_prompt: `${EXECUTOR_SYSTEM_PROMPT} \n You have currently executed the following steps: \n ${contextContent}`,
-                memory_id: deepResearchBaseMemoryId,
+                memory_id: baseMemoryId,
               },
             },
           };

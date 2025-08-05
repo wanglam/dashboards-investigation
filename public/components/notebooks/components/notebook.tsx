@@ -428,8 +428,7 @@ export function NotebookComponent({
     vizObjectInput?: string,
     paraType?: string,
     _dataSourceMDSId?: string,
-    deepResearchAgentId?: string,
-    deepResearchBaseMemoryId?: string
+    deepResearchAgentId?: string
   ) => {
     showParagraphRunning(index);
     if (vizObjectInput) {
@@ -444,7 +443,6 @@ export function NotebookComponent({
       dataSourceMDSId: dataSourceMDSId || '',
       dataSourceMDSLabel: dataSourceMDSLabel || '',
       deepResearchAgentId,
-      deepResearchBaseMemoryId,
     };
     const route = isSavedObjectNotebook
       ? `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraph/update/run`
