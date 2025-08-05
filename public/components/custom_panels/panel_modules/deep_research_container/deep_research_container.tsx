@@ -50,7 +50,6 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   const taskId = parsedParagraphOut.taskId ?? parsedParagraphOut.task_id;
   const [tracesVisible, setTracesVisible] = useState(false);
   const [executorMessages, setExecutorMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [loadingSteps, setLoadingSteps] = useState(false);
   const [showContextModal, setShowContextModal] = useState(false);
   const [traceModalData, setTraceModalData] = useState<{
@@ -99,7 +98,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
       .pipe(takeWhile((res) => !isStateCompletedOrFailed(res.state), true))
       .subscribe((newTask) => {
         setTask((previousTask) => {
-          if (previousTask?.state === newTask.state) {
+          if (JSON.stringify(previousTask) === JSON.stringify(newTask)) {
             return previousTask;
           }
           return { taskId, ...newTask };
@@ -112,11 +111,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
   }, [taskId, para.dataSourceMDSId, http]);
 
   useEffect(() => {
-    if (!taskLoaded) {
-      return;
-    }
-    if (taskFinished) {
-      setTracesVisible(false);
+    if (!taskLoaded || taskFinished) {
       return;
     }
     const abortController = new AbortController();
@@ -161,10 +156,11 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
     };
   }, [taskLoaded, taskFinished, http]);
 
-  useEffect(() => {
-    setIsLoading(!taskLoaded || !taskFinished);
-    if (taskLoaded && !taskFinished) {
-      setTracesVisible(true);
+  useUpdateEffect(() => {
+    setTracesVisible(taskLoaded && !taskFinished);
+    if (taskLoaded && taskFinished) {
+      setExecutorMessages([]);
+      setTraces([]);
     }
   }, [taskLoaded, taskFinished]);
 
@@ -250,7 +246,7 @@ export const DeepResearchContainer = ({ para, http, paragraph$ }: Props) => {
           Show agent request details
         </EuiButton>
       )}
-      {isLoading ? (
+      {!taskLoaded || !taskFinished ? (
         <EuiLoadingContent />
       ) : (
         <EuiButton
