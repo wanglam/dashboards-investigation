@@ -71,6 +71,7 @@ export interface NotebookContext {
   PPLFilters?: string[];
   variables?: Record<string, unknown>;
   memoryId?: string;
+  indexInsight?: IndexInsightContent;
 }
 
 export interface ParagraphBackendType<TOutputResult = string> {
@@ -102,4 +103,21 @@ export interface NotebookBackendType {
 
 export interface AnomalyVisualizationAnalysisOutputResult {
   fieldComparison: Array<Record<string, unknown>>;
+}
+
+export interface IndexInsightContent {
+  is_log_index: boolean;
+  log_message_field?: string;
+  trace_id_field?: string;
+}
+
+export interface IndexInsight {
+  index_name: string;
+  content: string;
+  status: string;
+  task_type: string;
+  last_updated_time: number;
+}
+export interface IndexInsights {
+  index_insights: IndexInsight[];
 }

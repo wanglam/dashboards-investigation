@@ -64,13 +64,19 @@ export const usePrecheck = () => {
         if (!logPatternParaExists) {
           const resContext = res.context as NotebookContext;
           if (resContext?.timeRange && resContext?.index && resContext?.timeField) {
-            const logPatternResult = await createParagraph(
-              totalParagraphLength + 1,
-              '',
-              LOG_PATTERN_PARAGRAPH_TYPE
-            );
-            if (logPatternResult) {
-              paragraphStates.push(logPatternResult);
+            if (
+              resContext?.indexInsight?.is_log_index &&
+              resContext?.indexInsight?.log_message_field &&
+              resContext?.indexInsight?.trace_id_field
+            ) {
+              const logPatternResult = await createParagraph(
+                totalParagraphLength + 1,
+                '',
+                LOG_PATTERN_PARAGRAPH_TYPE
+              );
+              if (logPatternResult) {
+                paragraphStates.push(logPatternResult);
+              }
             }
           }
         }
