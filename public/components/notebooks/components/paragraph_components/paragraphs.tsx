@@ -8,7 +8,6 @@ import {
   EuiCompressedFormRow,
   EuiFlexGroup,
   EuiFlexItem,
-  EuiIcon,
   EuiLink,
   EuiPanel,
   EuiSmallButton,
@@ -28,6 +27,7 @@ import React, {
 import { useCallback } from 'react';
 import { useContext } from 'react';
 import { NoteBookServices } from 'public/types';
+import { useObservable } from 'react-use';
 import { SavedObjectsFindOptions } from '../../../../../../../src/core/public';
 import { DashboardContainerInput } from '../../../../../../../src/plugins/dashboard/public';
 import { ViewMode } from '../../../../../../../src/plugins/embeddable/public';
@@ -49,6 +49,9 @@ import { DataSourceSelectorProps } from '../../../../../../../src/plugins/data_s
 import { ParagraphActionPanel } from './paragraph_actions_panel';
 import { useParagraphs } from '../../../../hooks/use_paragraphs';
 import { NotebookReactContext } from '../../context_provider/context_provider';
+import { PPLParagraph } from './ppl';
+import { getInputType } from '../../../../../common/utils/paragraph';
+import { MarkdownParagraph } from './markdown';
 import { ParagraphState, ParagraphStateValue } from '../../../../../common/state/paragraph_state';
 import { useOpenSearchDashboards } from '../../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { getDataSourceManagementSetup } from '../../../../../public/services';
@@ -59,8 +62,6 @@ import { getDataSourceManagementSetup } from '../../../../../public/services';
  * Props taken in as params are:
  * para - parsed paragraph from notebook
  * index - index of paragraph in the notebook
- * textValueEditor - function for handling input in textarea
- * handleKeyPress - function for handling key press like "Shift-key+Enter" to run paragraph
  * DashboardContainerByValueRenderer - Dashboard container renderer for visualization
  * http object - for making API requests
  * selectedViewId - selected view: view_both, input_only, output_only
@@ -75,13 +76,6 @@ export interface ParagraphProps {
   originalPara: ParagraphStateValue;
   setPara: (para: ParagraphStateValue) => void;
   index: number;
-  textValueEditor: (evt: React.ChangeEvent<HTMLTextAreaElement>, index: number) => void;
-  handleKeyPress: (
-    evt: React.KeyboardEvent<Element>,
-    para: ParaType,
-    index: number,
-    dataSourceMDSID: string
-  ) => void;
   selectedViewId: string;
   deletePara: (index: number) => void;
   runPara: (
@@ -91,9 +85,6 @@ export interface ParagraphProps {
     paraType?: string,
     dataSourceMDSId?: string
   ) => void;
-  showQueryParagraphError: boolean;
-  queryParagraphErrorMessage: string;
-  dataSourceEnabled: boolean;
   handleSelectedDataSourceChange: (
     dataSourceMDSId: string | undefined,
     dataSourceMDSLabel: string | undefined
@@ -108,10 +99,6 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   const {
     para,
     index,
-    textValueEditor,
-    handleKeyPress,
-    showQueryParagraphError,
-    queryParagraphErrorMessage,
     handleSelectedDataSourceChange,
     paradataSourceMDSId,
     scrollToPara,
@@ -140,6 +127,7 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
   const { saveParagraph } = useParagraphs();
   const context = useContext(NotebookReactContext);
   const paragraph = context.state.value.paragraphs[index];
+  const paragraphValue = useObservable(paragraph.getValue$(), paragraph.value);
 
   // output is available if it's not cleared and vis paragraph has a selected visualization
   const isOutputAvailable =
@@ -369,22 +357,6 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
     </EuiText>
   ) : null;
 
-  const queryErrorMessage = queryParagraphErrorMessage.includes('SQL') ? (
-    <EuiText size="s">
-      {queryParagraphErrorMessage}. Learn More{' '}
-      <EuiLink href={SQL_DOCUMENTATION_URL} target="_blank">
-        <EuiIcon type="popout" size="s" />
-      </EuiLink>
-    </EuiText>
-  ) : (
-    <EuiText size="s">
-      {queryParagraphErrorMessage}.{' '}
-      <EuiLink href={PPL_DOCUMENTATION_URL} target="_blank">
-        Learn More <EuiIcon type="popout" size="s" />
-      </EuiLink>
-    </EuiText>
-  );
-
   const paraClass = `notebooks-paragraph notebooks-paragraph-${
     uiSettingsService.get('theme:darkMode') ? 'dark' : 'light'
   }`;
@@ -420,89 +392,117 @@ export const Paragraphs = forwardRef((props: ParagraphProps, ref) => {
       hasBorder={false}
     >
       {<ParagraphActionPanel idx={index} scrollToPara={scrollToPara} deletePara={deletePara} />}
-      {dataSourceEnabled &&
-        !para.isVizualisation &&
-        !para.isAnomalyVisualizationAnalysis &&
-        !para.isLogPattern && (
-          <EuiFlexGroup style={{ marginTop: 0 }}>
-            <EuiFlexItem>
-              <DataSourceSelector
-                savedObjectsClient={savedObjectsMDSClient.client}
-                notifications={notifications.toasts}
-                onSelectedDataSource={onSelectedDataSource}
-                disabled={false}
-                fullWidth={false}
-                removePrepend={false}
-                defaultOption={
-                  paradataSourceMDSId !== undefined ? [{ id: paradataSourceMDSId }] : undefined
-                }
-                dataSourceFilter={dataSourceFilterFn}
-              />
-            </EuiFlexItem>
-            {para.isDeepResearch && (
+      {(() => {
+        const paragraphType = getInputType(paragraphValue);
+        switch (paragraphType) {
+          case 'ppl':
+          case 'sql': {
+            return (
+              <div key={paragraph.value.id} className={paraClass}>
+                <PPLParagraph paragraphState={paragraph as ParagraphState<string>} />
+              </div>
+            );
+          }
+          case 'md': {
+            return (
+              <div key={paragraph.value.id} className={paraClass}>
+                <MarkdownParagraph paragraphState={paragraph as ParagraphState<string>} />
+              </div>
+            );
+          }
+          default: {
+            return (
               <>
-                <EuiFlexItem>
-                  <AgentsSelector
-                    value={deepResearchAgentId}
-                    dataSourceMDSId={dataSourceMDSId}
-                    onChange={async (value) => {
-                      setDeepResearchAgentId(value);
-                      // FIXME move to deep research paragraph
-                      await saveParagraph({
-                        paragraphStateValue: ParagraphState.updateOutputResult(paragraph.value, {
-                          agent_id: value,
-                        }),
-                      });
-                    }}
-                  />
-                </EuiFlexItem>
+                {dataSourceEnabled &&
+                  !para.isVizualisation &&
+                  !para.isAnomalyVisualizationAnalysis &&
+                  !para.isLogPattern && (
+                    <EuiFlexGroup style={{ marginTop: 0 }}>
+                      <EuiFlexItem>
+                        <DataSourceSelector
+                          savedObjectsClient={savedObjectsMDSClient.client}
+                          notifications={notifications.toasts}
+                          onSelectedDataSource={onSelectedDataSource}
+                          disabled={false}
+                          fullWidth={false}
+                          removePrepend={false}
+                          defaultOption={
+                            paradataSourceMDSId !== undefined
+                              ? [{ id: paradataSourceMDSId }]
+                              : undefined
+                          }
+                          dataSourceFilter={dataSourceFilterFn}
+                        />
+                      </EuiFlexItem>
+                      {para.isDeepResearch && (
+                        <>
+                          <EuiFlexItem>
+                            <AgentsSelector
+                              value={deepResearchAgentId}
+                              dataSourceMDSId={dataSourceMDSId}
+                              onChange={async (value) => {
+                                setDeepResearchAgentId(value);
+                                // FIXME move to deep research paragraph
+                                await saveParagraph({
+                                  paragraphStateValue: ParagraphState.updateOutputResult(
+                                    paragraph.value,
+                                    {
+                                      agent_id: value,
+                                    }
+                                  ),
+                                });
+                              }}
+                            />
+                          </EuiFlexItem>
+                        </>
+                      )}
+                    </EuiFlexGroup>
+                  )}
+                <div key={index} className={paraClass}>
+                  {!para.isAnomalyVisualizationAnalysis && !para.isLogPattern && (
+                    <>
+                      <EuiSpacer size="s" />
+                      <EuiCompressedFormRow fullWidth={true} helpText={paragraphLabel}>
+                        <ParaInput
+                          para={para}
+                          index={index}
+                          runParaError={runParaError}
+                          startTime={para.visStartTime}
+                          setStartTime={setStartTime}
+                          endTime={para.visEndTime}
+                          setEndTime={setEndTime}
+                          setIsOutputStale={setIsOutputStale}
+                          visOptions={visOptions}
+                          selectedVisOption={selectedVisOption}
+                          setSelectedVisOption={setSelectedVisOption}
+                          setVisType={setVisType}
+                        />
+                      </EuiCompressedFormRow>
+                      {runParaError && (
+                        <EuiText
+                          color="danger"
+                          size="s"
+                          data-test-subj="paragraphInputErrorText"
+                        >{`${
+                          para.isVizualisation ? 'Visualization' : 'Input'
+                        } is required.`}</EuiText>
+                      )}
+                      <EuiSpacer size="m" />
+                      <EuiFlexGroup alignItems="center" gutterSize="s">
+                        <EuiFlexItem grow={false}>{executeButton}</EuiFlexItem>
+                      </EuiFlexGroup>
+                      <EuiSpacer size="m" />
+                    </>
+                  )}
+                  {props.selectedViewId !== 'input_only' && isOutputAvailable && (
+                    <div style={{ opacity: para.isOutputStale ? 0.5 : 1 }}>{paraOutput}</div>
+                  )}
+                </div>
               </>
-            )}
-          </EuiFlexGroup>
-        )}
-      <div key={index} className={paraClass}>
-        {!para.isAnomalyVisualizationAnalysis && !para.isLogPattern && (
-          <>
-            <EuiSpacer size="s" />
-            <EuiCompressedFormRow
-              fullWidth={true}
-              helpText={paragraphLabel}
-              isInvalid={showQueryParagraphError}
-              error={queryErrorMessage}
-            >
-              <ParaInput
-                para={para}
-                index={index}
-                runParaError={runParaError}
-                textValueEditor={textValueEditor}
-                handleKeyPress={handleKeyPress}
-                startTime={para.visStartTime}
-                setStartTime={setStartTime}
-                endTime={para.visEndTime}
-                setEndTime={setEndTime}
-                setIsOutputStale={setIsOutputStale}
-                visOptions={visOptions}
-                selectedVisOption={selectedVisOption}
-                setSelectedVisOption={setSelectedVisOption}
-                setVisType={setVisType}
-              />
-            </EuiCompressedFormRow>
-            {runParaError && (
-              <EuiText color="danger" size="s" data-test-subj="paragraphInputErrorText">{`${
-                para.isVizualisation ? 'Visualization' : 'Input'
-              } is required.`}</EuiText>
-            )}
-            <EuiSpacer size="m" />
-            <EuiFlexGroup alignItems="center" gutterSize="s">
-              <EuiFlexItem grow={false}>{executeButton}</EuiFlexItem>
-            </EuiFlexGroup>
-            <EuiSpacer size="m" />
-          </>
-        )}
-        {props.selectedViewId !== 'input_only' && isOutputAvailable && (
-          <div style={{ opacity: para.isOutputStale ? 0.5 : 1 }}>{paraOutput}</div>
-        )}
-      </div>
+            );
+          }
+        }
+      })()}
     </EuiPanel>
   );
 });

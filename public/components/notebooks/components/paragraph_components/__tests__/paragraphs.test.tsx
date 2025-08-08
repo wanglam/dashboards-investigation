@@ -68,8 +68,6 @@ describe('<Paragraphs /> spec', () => {
   it('renders the component', () => {
     const setPara = jest.fn();
     const paragraphSelector = jest.fn();
-    const textValueEditor = jest.fn();
-    const handleKeyPress = jest.fn();
     const addPara = jest.fn();
     const DashboardContainerByValueRenderer = jest.fn();
     const deletePara = jest.fn();
@@ -84,19 +82,26 @@ describe('<Paragraphs /> spec', () => {
         index={0}
         paraCount={2}
         paragraphSelector={paragraphSelector}
-        textValueEditor={textValueEditor}
-        handleKeyPress={handleKeyPress}
         addPara={addPara}
         DashboardContainerByValueRenderer={DashboardContainerByValueRenderer}
         http={getOSDHttp()}
         selectedViewId="view_both"
         deletePara={deletePara}
         runPara={runPara}
-        showQueryParagraphError={false}
-        queryParagraphErrorMessage="error-message"
         dataSourceEnabled={false}
         paragraphs={[]}
-        paragraphValues={sampleParsedParagraghs1}
+        paragraphValues={[
+          {
+            ...sampleParsedParagraghs1[0],
+            input: {
+              inputType: 'CODE',
+              inputText: '%md # Type your input here',
+            },
+            dateCreated: '',
+            dateModified: '',
+            id: '',
+          },
+        ]}
       />
     );
     expect(utils.container.firstChild).toMatchSnapshot();
@@ -105,8 +110,6 @@ describe('<Paragraphs /> spec', () => {
   it('use SavedObject find to fetch visualizations when dataSourceEnabled', () => {
     const setPara = jest.fn();
     const paragraphSelector = jest.fn();
-    const textValueEditor = jest.fn();
-    const handleKeyPress = jest.fn();
     const addPara = jest.fn();
     const DashboardContainerByValueRenderer = jest.fn();
     const deletePara = jest.fn();
@@ -139,20 +142,27 @@ describe('<Paragraphs /> spec', () => {
         index={0}
         paraCount={2}
         paragraphSelector={paragraphSelector}
-        textValueEditor={textValueEditor}
-        handleKeyPress={handleKeyPress}
         addPara={addPara}
         DashboardContainerByValueRenderer={DashboardContainerByValueRenderer}
         http={getOSDHttp()}
         selectedViewId="view_both"
         deletePara={deletePara}
         runPara={runPara}
-        showQueryParagraphError={false}
-        queryParagraphErrorMessage="error-message"
         dataSourceEnabled={true}
         dataSourceManagement={{ ui: { DataSourceSelector: () => null } }}
         paragraphs={[]}
-        paragraphValues={[para]}
+        paragraphValues={[
+          {
+            ...para,
+            input: {
+              inputType: 'VISUALIZATION',
+              inputText: '%md # Type your input here',
+            },
+            dateCreated: '',
+            dateModified: '',
+            id: '',
+          },
+        ]}
       />
     );
     expect(utils.container.firstChild).toMatchSnapshot();
