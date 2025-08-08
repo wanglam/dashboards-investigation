@@ -122,3 +122,10 @@ export interface IndexInsight {
 export interface IndexInsights {
   index_insights: IndexInsight[];
 }
+
+export interface DeepResearchOutputResult {
+  taskId: string;
+  memoryId?: string;
+  // FIXME: Should be removed in the final release
+  agent_id?: string;
+}
