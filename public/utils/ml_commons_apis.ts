@@ -25,7 +25,10 @@ const callApiWithProxy = ({
 }) => {
   const queryEntries = query ? Object.entries(query) : [];
   if (queryEntries.length > 0) {
-    path = `${path}?${queryEntries.map((item) => item.join('=')).join('&')}`;
+    path = `${path}?${queryEntries
+      .filter(([_key, value]) => typeof value !== 'undefined')
+      .map((item) => item.join('='))
+      .join('&')}`;
   }
   return http.post({
     path: '/api/console/proxy',
