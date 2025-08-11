@@ -23,12 +23,11 @@ const callApiWithProxy = ({
   dataSourceId?: string;
   body?: BodyInit;
 }) => {
-  const queryEntries = query ? Object.entries(query) : [];
-  if (queryEntries.length > 0) {
-    path = `${path}?${queryEntries
-      .filter(([_key, value]) => typeof value !== 'undefined')
-      .map((item) => item.join('='))
-      .join('&')}`;
+  const validQueryEntries = query
+    ? Object.entries(query).filter(([_key, value]) => typeof value !== 'undefined')
+    : [];
+  if (validQueryEntries.length > 0) {
+    path = `${path}?${validQueryEntries.map((item) => item.join('=')).join('&')}`;
   }
   return http.post({
     path: '/api/console/proxy',
