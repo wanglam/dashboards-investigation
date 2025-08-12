@@ -19,7 +19,7 @@ import {
   getNotebookTopLevelContextPrompt,
   getOpenSearchClientTransport,
 } from '../../../routes/utils';
-import { getParagraphServiceSetup } from '../../../services/get_set';
+import { getMLService, getParagraphServiceSetup } from '../../../services/get_set';
 import {
   OpenSearchClient,
   RequestHandlerContext,
@@ -45,11 +45,12 @@ const getAgentIdFromParagraph = async ({
 
   if (!output.agent_id) {
     try {
-      const { body } = await transport.request({
-        method: 'GET',
-        path: '/_plugins/_ml/config/os_deep_research',
-      });
-      output.agent_id = body.configuration.agent_id;
+      output.agent_id = (
+        await getMLService().getMLConfig({
+          transport,
+          configName: 'os_deep_research',
+        })
+      ).configuration.agent_id;
     } catch (error) {
       // Add error catch here..
     }
@@ -77,26 +78,24 @@ export const executePERAgentInParagraph = async ({
     throw new Error('No PER agent id configured.');
   }
   const startTime = now();
-  const payload = {
-    method: 'POST',
-    path: `/_plugins/_ml/agents/${agentId}/_execute`,
-    querystring: 'async=true',
-    body: {
-      parameters: {
-        question: paragraph.input.inputText,
-        planner_prompt_template:
-          '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ${parameters.user_prompt} \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n',
-        planner_with_history_template:
-          '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ```${parameters.user_prompt}``` \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps: \n[${parameters.completed_steps}] \n\n',
-        reflect_prompt_template:
-          '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ```${parameters.user_prompt}``` \n\n Original plan:\n[${parameters.steps}] \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps from the original plan: \n[${parameters.completed_steps}] \n\n ${parameters.reflect_prompt} \n\n.',
-        context,
-        executor_system_prompt: `${EXECUTOR_SYSTEM_PROMPT} \n You have currently executed the following steps: \n ${context}`,
-        memory_id: baseMemoryId,
-      },
-    },
+  const parameters = {
+    question: paragraph.input.inputText,
+    planner_prompt_template:
+      '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ${parameters.user_prompt} \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n',
+    planner_with_history_template:
+      '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ```${parameters.user_prompt}``` \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps: \n[${parameters.completed_steps}] \n\n',
+    reflect_prompt_template:
+      '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ```${parameters.user_prompt}``` \n\n Original plan:\n[${parameters.steps}] \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps from the original plan: \n[${parameters.completed_steps}] \n\n ${parameters.reflect_prompt} \n\n.',
+    context,
+    executor_system_prompt: `${EXECUTOR_SYSTEM_PROMPT} \n You have currently executed the following steps: \n ${context}`,
+    memory_id: baseMemoryId,
   };
-  const { body } = await transport.request(payload);
+  const { body } = await getMLService().executeAgent({
+    transport,
+    agentId,
+    async: true,
+    parameters,
+  });
   const dateModified = new Date().toISOString();
   const output: ParagraphBackendType<DeepResearchOutputResult>['output'] = [
     {
@@ -116,7 +115,12 @@ export const executePERAgentInParagraph = async ({
     input: {
       ...paragraph.input,
       // FIXME: this is used for debug
-      PERAgentInput: payload,
+      PERAgentInput: {
+        body: JSON.stringify({
+          agentId,
+          parameters,
+        }),
+      },
       PERAgentContext: context,
     },
     output,
