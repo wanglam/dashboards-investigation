@@ -39,7 +39,11 @@ import { useMemo } from 'react';
 import { i18n } from '@osd/i18n';
 import { NoteBookServices } from 'public/types';
 import { ParagraphState } from '../../../../common/state/paragraph_state';
-import { CREATE_NOTE_MESSAGE, NOTEBOOKS_API_PREFIX } from '../../../../common/constants/notebooks';
+import {
+  CREATE_NOTE_MESSAGE,
+  DEEP_RESEARCH_PARAGRAPH_TYPE,
+  NOTEBOOKS_API_PREFIX,
+} from '../../../../common/constants/notebooks';
 import { UI_DATE_FORMAT } from '../../../../common/constants/shared';
 import { NotebookContext, ParaType } from '../../../../common/types/notebooks';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
@@ -65,8 +69,6 @@ import { isValidUUID } from './helpers/notebooks_parser';
 import { useNotebook } from '../../../hooks/use_notebook';
 import { usePrecheck } from '../../../hooks/use_precheck';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
-
-const ParagraphTypeDeepResearch = 'DEEP_RESEARCH';
 
 const panelStyles: CSS.Properties = {
   marginTop: '10px',
@@ -740,7 +742,7 @@ export function NotebookComponent() {
                           description="Use deep research to analytics question."
                           footer={
                             <EuiSmallButton
-                              onClick={() => createParagraph(0, '', ParagraphTypeDeepResearch)}
+                              onClick={() => createParagraph(0, '', DEEP_RESEARCH_PARAGRAPH_TYPE)}
                               style={{ marginBottom: 17 }}
                             >
                               Add deep research

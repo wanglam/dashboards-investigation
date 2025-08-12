@@ -26,6 +26,7 @@ export const OPENSEARCH_NOTEBOOKS_API = {
 export const LOG_PATTERN_PARAGRAPH_TYPE = 'LOG_PATTERN';
 export const ANOMALY_VISUALIZATION_ANALYSIS_PARAGRAPH_TYPE = 'ANOMALY_ANALYSIS';
 export const PPL_PARAGRAPH_TYPE = 'ppl';
+export const DEEP_RESEARCH_PARAGRAPH_TYPE = 'DEEP_RESEARCH';
 
 export const EXECUTOR_SYSTEM_PROMPT = `
     You are a dedicated helper agent working as the \`Executor Agent\` in a Plan–Execute–Reflect framework. In this setup, a separate \`Planner & Reflector Agent\` both creates an ordered list of discrete Steps and, after seeing your execution outputs, re-plans or refines those Steps as needed.
