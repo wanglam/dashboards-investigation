@@ -7,7 +7,7 @@ import type { DeepResearchOutputResult } from 'common/types/notebooks';
 
 import { getMLService } from '../../server/services/get_set';
 import { ParagraphRegistryItem } from '../services/paragraph_service';
-import { extractCompletedResponse } from '../../public/utils/task';
+import { extractCompletedResponse } from '../../common/utils/task';
 
 export const PERAgentParagraph: ParagraphRegistryItem<DeepResearchOutputResult> = {
   getContext: async ({ paragraph, transport }) => {
