@@ -60,3 +60,5 @@ export const NOTEBOOK_APP_NAME = 'investigate-notebook';
 export const OBSERVABILITY_VISUALIZATION_TYPE = 'observability-visualization';
 
 export const DASHBOARDS_VISUALIZATION_TYPE = 'visualization';
+
+export const AI_RESPONSE_TYPE = 'AI-Response';
