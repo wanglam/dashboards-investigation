@@ -300,7 +300,9 @@ describe('per_agent', () => {
         dateModified: mockDate.toISOString(),
         input: {
           ...mockParagraph.input,
-          PERAgentContext: context,
+          parameters: {
+            PERAgentContext: context,
+          },
         },
         output: [
           {
@@ -315,7 +317,7 @@ describe('per_agent', () => {
       });
 
       // Verify PERAgentInput exists
-      expect(result.input.PERAgentInput).toBeDefined();
+      expect(result.input.parameters.PERAgentInput).toBeDefined();
 
       // Verify execution_time format
       expect(result.output?.[0].execution_time).toMatch(/\d+\.\d+ ms/);
@@ -365,7 +367,7 @@ describe('per_agent', () => {
       });
 
       // Verify PERAgentInput exists
-      expect(result.input.PERAgentInput).toBeDefined();
+      expect(result.input.parameters.PERAgentInput).toBeDefined();
 
       // Verify execution_time format
       expect(result.output?.[0].execution_time).toMatch(/\d+\.\d+ ms/);

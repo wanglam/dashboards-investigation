@@ -65,7 +65,10 @@ export const executePERAgentInParagraph = async ({
   baseMemoryId,
 }: {
   transport: OpenSearchClient['transport'];
-  paragraph: ParagraphBackendType<unknown>;
+  paragraph: ParagraphBackendType<
+    unknown,
+    { prompts?: { systemPrompt?: string; executorSystemPrompt?: string } }
+  >;
   baseMemoryId?: string;
   context?: string;
 }) => {
@@ -77,6 +80,7 @@ export const executePERAgentInParagraph = async ({
   if (!agentId) {
     throw new Error('No PER agent id configured.');
   }
+  const customizedPrompts = paragraph.input.parameters?.prompts;
   const startTime = now();
   const parameters = {
     question: paragraph.input.inputText,
@@ -87,7 +91,10 @@ export const executePERAgentInParagraph = async ({
     reflect_prompt_template:
       '${parameters.tools_prompt} \n ${parameters.planner_prompt} \n Objective: ```${parameters.user_prompt}``` \n\n Original plan:\n[${parameters.steps}] \n\n Here are some steps user has executed to help you investigate: \n[${parameters.context}] \n\n You have currently executed the following steps from the original plan: \n[${parameters.completed_steps}] \n\n ${parameters.reflect_prompt} \n\n.',
     context,
-    executor_system_prompt: `${EXECUTOR_SYSTEM_PROMPT} \n You have currently executed the following steps: \n ${context}`,
+    system_prompt: customizedPrompts?.systemPrompt ?? undefined,
+    executor_system_prompt: `${
+      customizedPrompts?.executorSystemPrompt ?? EXECUTOR_SYSTEM_PROMPT
+    } \n You have currently executed the following steps: \n ${context}`,
     memory_id: baseMemoryId,
   };
   const { body } = await getMLService().executeAgent({
@@ -115,13 +122,16 @@ export const executePERAgentInParagraph = async ({
     input: {
       ...paragraph.input,
       // FIXME: this is used for debug
-      PERAgentInput: {
-        body: JSON.stringify({
-          agentId,
-          parameters,
-        }),
+      parameters: {
+        ...(paragraph.input.parameters ?? {}),
+        PERAgentInput: {
+          body: JSON.stringify({
+            agentId,
+            parameters,
+          }),
+        },
+        PERAgentContext: context,
       },
-      PERAgentContext: context,
     },
     output,
   };
