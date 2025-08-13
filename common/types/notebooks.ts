@@ -49,6 +49,11 @@ export enum NoteBookSource {
   ALERTING = 'alert',
 }
 
+export enum NotebookType {
+  AGENTIC = 'Agentic',
+  CLASSIC = 'Classic',
+}
+
 export interface NotebookContext {
   dataSourceId?: string;
   timeField?: string;
@@ -66,6 +71,7 @@ export interface NotebookContext {
   variables?: Record<string, unknown>;
   memoryId?: string;
   indexInsight?: IndexInsightContent;
+  notebookType?: NotebookType;
 }
 
 export interface ParagraphBackendType<TOutputResult, TInputParameters = unknown> {
