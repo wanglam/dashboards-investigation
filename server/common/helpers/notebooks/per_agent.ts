@@ -6,6 +6,7 @@
 import now from 'performance-now';
 
 import type {
+  DeepResearchInputParameters,
   DeepResearchOutputResult,
   NotebookContext,
   ParagraphBackendType,
@@ -30,22 +31,26 @@ const getAgentIdFromParagraph = async ({
   transport,
   paragraph,
 }: {
-  paragraph: ParagraphBackendType<unknown>;
+  paragraph: ParagraphBackendType<unknown, DeepResearchInputParameters>;
   transport: OpenSearchClient['transport'];
 }) => {
-  let output: { agent_id: string } = { agent_id: '' };
-  try {
-    output =
-      typeof paragraph.output?.[0].result === 'string'
-        ? JSON.parse(paragraph.output?.[0].result)
-        : paragraph.output?.[0].result;
-  } catch (e) {
-    // do nothing
+  // FIXME: remove this when production release
+  let agentId = paragraph.input.parameters?.agentId;
+  if (!agentId) {
+    try {
+      const output =
+        typeof paragraph.output?.[0].result === 'string'
+          ? JSON.parse(paragraph.output?.[0].result)
+          : paragraph.output?.[0].result;
+      agentId = output.agent_id;
+    } catch (e) {
+      // do nothing
+    }
   }
 
-  if (!output.agent_id) {
+  if (!agentId) {
     try {
-      output.agent_id = (
+      agentId = (
         await getMLService().getMLConfig({
           transport,
           configName: 'os_deep_research',
@@ -55,7 +60,7 @@ const getAgentIdFromParagraph = async ({
       // Add error catch here..
     }
   }
-  return output.agent_id;
+  return agentId;
 };
 
 export const executePERAgentInParagraph = async ({
@@ -65,10 +70,7 @@ export const executePERAgentInParagraph = async ({
   baseMemoryId,
 }: {
   transport: OpenSearchClient['transport'];
-  paragraph: ParagraphBackendType<
-    unknown,
-    { prompts?: { systemPrompt?: string; executorSystemPrompt?: string } }
-  >;
+  paragraph: ParagraphBackendType<unknown, DeepResearchInputParameters>;
   baseMemoryId?: string;
   context?: string;
 }) => {
@@ -110,7 +112,6 @@ export const executePERAgentInParagraph = async ({
       result: {
         taskId: body.task_id,
         memoryId: body.response?.memory_id,
-        agent_id: agentId,
       },
       execution_time: `${(now() - startTime).toFixed(3)} ms`,
     },
@@ -124,6 +125,7 @@ export const executePERAgentInParagraph = async ({
       // FIXME: this is used for debug
       parameters: {
         ...(paragraph.input.parameters ?? {}),
+        agentId,
         PERAgentInput: {
           body: JSON.stringify({
             agentId,
