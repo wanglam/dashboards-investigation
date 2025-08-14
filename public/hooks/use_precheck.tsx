@@ -4,6 +4,7 @@
  */
 
 import {
+  DeepResearchInputParameters,
   DeepResearchOutputResult,
   NotebookContext,
   ParagraphBackendType,
@@ -17,6 +18,7 @@ import {
   LOG_PATTERN_PARAGRAPH_TYPE,
 } from '../../common/constants/notebooks';
 import { useParagraphs } from './use_paragraphs';
+import { getSystemPrompts } from '../components/notebooks/components/helpers/custom_modals/system_prompt_setting_modal';
 
 export const usePrecheck = () => {
   const { createParagraph, runParagraph } = useParagraphs();
@@ -136,12 +138,16 @@ export const usePrecheck = () => {
 
               if (createdPERAgentParagraphState) {
                 const perAgentSubscription = (createdPERAgentParagraphState as ParagraphState<
-                  DeepResearchOutputResult
+                  DeepResearchOutputResult,
+                  DeepResearchInputParameters
                 >)
                   .getValue$()
                   .subscribe(async (value) => {
-                    if (ParagraphState.getOutput(value)?.result.agent_id) {
+                    if (value.input.parameters?.agentId) {
                       perAgentSubscription.unsubscribe();
+                      createdPERAgentParagraphState.updateInput({
+                        parameters: { prompts: getSystemPrompts() },
+                      });
                       await runParagraph({ index: totalParagraphLength + paragraphStates.length });
                     }
                   });
