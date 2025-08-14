@@ -42,7 +42,7 @@ const getAgentIdFromParagraph = async ({
         typeof paragraph.output?.[0].result === 'string'
           ? JSON.parse(paragraph.output?.[0].result)
           : paragraph.output?.[0].result;
-      agentId = output.agentId;
+      agentId = output.agent_id;
     } catch (e) {
       // do nothing
     }
