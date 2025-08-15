@@ -18,7 +18,7 @@ export interface OptionsType {
 }
 
 export enum NoteBookSource {
-  ALERTING = 'alert',
+  ALERTING = 'Alert',
 }
 
 export enum NotebookType {
