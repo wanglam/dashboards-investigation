@@ -34,7 +34,6 @@ import {
   NOTEBOOKS_API_PREFIX,
 } from '../../../../common/constants/notebooks';
 import { NoteBookSource } from '../../../../common/types/notebooks';
-import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 import { getCustomModal, getDeleteModal } from './helpers/modal_containers';
 import { Paragraphs } from './paragraph_components/paragraphs';
 import {
@@ -55,6 +54,10 @@ const panelStyles: CSS.Properties = {
   marginTop: '10px',
 };
 
+interface NotebookComponentProps {
+  showPageHeader?: boolean;
+}
+
 /*
  * "Notebook" component is used to display an open notebook
  *
@@ -62,13 +65,13 @@ const panelStyles: CSS.Properties = {
  * DashboardContainerByValueRenderer - Dashboard container renderer for visualization
  * http object - for making API requests
  */
-export interface NotebookProps {
+export interface NotebookProps extends NotebookComponentProps {
   openedNoteId: string;
 }
 
-export function NotebookComponent() {
+export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
   const {
-    services: { http, notifications, chrome },
+    services: { http, notifications },
   } = useOpenSearchDashboards<NoteBookServices>();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -170,31 +173,7 @@ export function NotebookComponent() {
     }, 0);
   };
 
-  const setBreadcrumbs = useCallback(
-    (notePath: string) => {
-      setNavBreadCrumbs(
-        [],
-        [
-          {
-            text: 'Notebooks',
-            href: '#/',
-          },
-          {
-            text: notePath,
-            href: `#/${openedNoteId}`,
-          },
-        ],
-        chrome
-      );
-    },
-    [openedNoteId, chrome]
-  );
-
-  useEffect(() => {
-    setBreadcrumbs(path);
-  }, [path, setBreadcrumbs]);
-
-  const loadNotebook = useCallback(() => {
+  const loadNotebook = useCallback(async () => {
     loadNotebookHook()
       .then(async (res) => {
         if (res.context) {
@@ -230,11 +209,13 @@ export function NotebookComponent() {
     <>
       <EuiPage direction="column">
         <EuiPageBody>
-          <NotebookHeader
-            isSavedObjectNotebook={isSavedObjectNotebook}
-            loadNotebook={loadNotebook}
-            showUpgradeModal={showUpgradeModal}
-          />
+          {showPageHeader && (
+            <NotebookHeader
+              isSavedObjectNotebook={isSavedObjectNotebook}
+              loadNotebook={loadNotebook}
+              showUpgradeModal={showUpgradeModal}
+            />
+          )}
           {!isSavedObjectNotebook && (
             <EuiFlexItem>
               <EuiCallOut color="primary" iconType="iInCircle">
@@ -374,7 +355,7 @@ export function NotebookComponent() {
   );
 }
 
-export const Notebook = ({ openedNoteId }: NotebookProps) => {
+export const Notebook = ({ openedNoteId, ...rest }: NotebookProps) => {
   const {
     services: { dataSource },
   } = useOpenSearchDashboards<NoteBookServices>();
@@ -386,7 +367,7 @@ export const Notebook = ({ openedNoteId }: NotebookProps) => {
   );
   return (
     <NotebookContextProvider state={stateRef.current}>
-      <NotebookComponent />
+      <NotebookComponent {...rest} />
     </NotebookContextProvider>
   );
 };

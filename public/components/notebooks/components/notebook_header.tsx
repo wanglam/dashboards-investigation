@@ -30,6 +30,7 @@ import { UI_DATE_FORMAT } from '../../../../common/constants/shared';
 import { HeaderControlledComponentsWrapper } from '../../../plugin_helpers/plugin_headerControl';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { NotebookReactContext } from '../context_provider/context_provider';
+import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 
 import { GenerateReportLoadingModal } from './helpers/custom_modals/reporting_loading_modal';
 import { DeleteNotebookModal, getCustomModal } from './helpers/modal_containers';
@@ -416,9 +417,33 @@ export const NotebookHeader = ({
       });
   }, [notifications.toasts]);
 
+  const setBreadcrumbs = useCallback(
+    (notePath: string) => {
+      setNavBreadCrumbs(
+        [],
+        [
+          {
+            text: 'Notebooks',
+            href: '#/',
+          },
+          {
+            text: notePath,
+            href: `#/${openedNoteId}`,
+          },
+        ],
+        chrome
+      );
+    },
+    [openedNoteId, chrome]
+  );
+
   useEffect(() => {
     checkIfReportingPluginIsInstalled();
-  }, [checkIfReportingPluginIsInstalled, chrome]);
+  }, [checkIfReportingPluginIsInstalled]);
+
+  useEffect(() => {
+    setBreadcrumbs(path);
+  }, [setBreadcrumbs, path]);
 
   const header = newNavigation ? (
     <HeaderControlledComponentsWrapper
