@@ -26,11 +26,11 @@ import { i18n } from '@osd/i18n';
 import type { NoteBookServices } from 'public/types';
 
 import { CREATE_NOTE_MESSAGE, NOTEBOOKS_API_PREFIX } from '../../../../common/constants/notebooks';
-import { UI_DATE_FORMAT } from '../../../../common/constants/shared';
-import { HeaderControlledComponentsWrapper } from '../../../plugin_helpers/plugin_headerControl';
+import { investigationNotebookID, UI_DATE_FORMAT } from '../../../../common/constants/shared';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { NotebookReactContext } from '../context_provider/context_provider';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
+import { HeaderVariant } from '../../../../../../src/core/public';
 
 import { GenerateReportLoadingModal } from './helpers/custom_modals/reporting_loading_modal';
 import { DeleteNotebookModal, getCustomModal } from './helpers/modal_containers';
@@ -40,6 +40,8 @@ import {
   generateInContextReport,
 } from './helpers/reporting_context_menu_helper';
 import { ToggleSystemPromptSettingModal } from './helpers/custom_modals/toggle_system_prompt_setting_modal';
+import { TopNavMenuIconData } from '../../../../../../src/plugins/navigation/public';
+import { SystemPromptSettingModal } from './helpers/custom_modals/system_prompt_setting_modal';
 
 export const NotebookHeader = ({
   loadNotebook,
@@ -52,11 +54,19 @@ export const NotebookHeader = ({
 }) => {
   const history = useHistory();
   const {
-    services: { http, notifications, chrome },
+    services: {
+      http,
+      notifications,
+      chrome,
+      navigation: {
+        ui: { TopNavMenu, HeaderControl },
+      },
+      appMountService,
+    },
   } = useOpenSearchDashboards<NoteBookServices>();
   const newNavigation = chrome.navGroup.getNavGroupEnabled();
   const notebookContext = useContext(NotebookReactContext);
-  const { dataSourceEnabled, id: openedNoteId, path, dateCreated } = useObservable(
+  const { dataSourceEnabled, id: openedNoteId, path, dateCreated, dateModified } = useObservable(
     notebookContext.state.getValue$(),
     notebookContext.state.value
   );
@@ -64,6 +74,7 @@ export const NotebookHeader = ({
   const [isReportingPluginInstalled, setIsReportingPluginInstalled] = useState(false);
   const [isReportingActionsPopoverOpen, setIsReportingActionsPopoverOpen] = useState(false);
   const [isReportingLoadingModalOpen, setIsReportingLoadingModalOpen] = useState(false);
+  const [isSystemPromptsModalOpen, setIsSystemPromptsModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalLayout, setModalLayout] = useState<React.ReactNode>(<EuiOverlayMask />);
 
@@ -445,15 +456,104 @@ export const NotebookHeader = ({
     setBreadcrumbs(path);
   }, [setBreadcrumbs, path]);
 
+  useEffect(() => {
+    if (newNavigation) {
+      chrome.setHeaderVariant(HeaderVariant.APPLICATION);
+    }
+  }, [chrome, newNavigation]);
+
   const header = newNavigation ? (
-    <HeaderControlledComponentsWrapper
-      description={`Created on ${moment(dateCreated).format(UI_DATE_FORMAT)}`}
-      components={[
-        noteActionIcons,
-        <EuiFlexItem grow={false}>{showReportingContextMenu}</EuiFlexItem>,
-        <EuiFlexItem grow={false}>{reportingTopButton}</EuiFlexItem>,
-      ]}
-    />
+    <>
+      {appMountService && (
+        <>
+          <TopNavMenu
+            appName={investigationNotebookID}
+            config={[
+              {
+                tooltip: i18n.translate('notebook.systemPromptSettingButton.tooltip', {
+                  defaultMessage: 'Edit system prompt',
+                }),
+                ariaLabel: i18n.translate('notebook.systemPromptSettingButton.tooltip', {
+                  defaultMessage: 'Edit system prompt',
+                }),
+                testId: 'notebook-system-prompt-icon',
+                run: () => {
+                  setIsSystemPromptsModalOpen(true);
+                },
+                iconType: 'setting',
+                controlType: 'icon',
+              } as TopNavMenuIconData,
+              ...(isSavedObjectNotebook
+                ? [
+                    {
+                      tooltip: i18n.translate('notebook.editButton.tooltip', {
+                        defaultMessage: 'Edit name',
+                      }),
+                      ariaLabel: i18n.translate('notebook.editButton.tooltip', {
+                        defaultMessage: 'Edit name',
+                      }),
+                      testId: 'notebook-edit-icon',
+                      run: showRenameModal,
+                      iconType: 'pencil',
+                      controlType: 'icon',
+                    } as TopNavMenuIconData,
+                  ]
+                : []),
+              ...(isReportingPluginInstalled && !dataSourceMDSEnabled
+                ? [
+                    {
+                      tooltip: i18n.translate('notebook.header.downloadPDFTooltip', {
+                        defaultMessage: 'Download PDF',
+                      }),
+                      ariaLabel: i18n.translate('notebook.header.downloadPDFTooltip', {
+                        defaultMessage: 'Download PDF',
+                      }),
+                      testId: 'notebook-download-pdf-icon',
+                      run: () => {
+                        generateInContextReport(
+                          'pdf',
+                          { http, notifications },
+                          toggleReportingLoadingModal
+                        );
+                      },
+                      iconType: 'download',
+                      controlType: 'icon',
+                    } as TopNavMenuIconData,
+                  ]
+                : []),
+              {
+                tooltip: i18n.translate('notebook.deleteButton.tooltip', {
+                  defaultMessage: 'Delete',
+                }),
+                ariaLabel: i18n.translate('notebook.deleteButton.tooltip', {
+                  defaultMessage: 'Delete',
+                }),
+                testId: 'notebook-delete-icon',
+                run: showDeleteNotebookModal,
+                iconType: 'trash',
+                controlType: 'icon',
+              } as TopNavMenuIconData,
+            ]}
+            screenTitle={path}
+            setMenuMountPoint={appMountService.setHeaderActionMenu}
+          />
+          <HeaderControl
+            controls={[
+              {
+                text: i18n.translate('notebook.header.lastUpdated', {
+                  defaultMessage: 'Last updated: {time}',
+                  values: {
+                    time: moment(dateModified).format('MM/DD/YYYY@ h:mma'),
+                  },
+                }),
+                color: 'subdued',
+              },
+            ]}
+            setMountPoint={appMountService.setHeaderRightControls}
+          />
+        </>
+      )}
+    </>
   ) : (
     <div>
       <EuiFlexGroup justifyContent="spaceBetween" alignItems="center" gutterSize="s">
@@ -482,6 +582,13 @@ export const NotebookHeader = ({
       {header}
       {showLoadingModal}
       {isModalVisible && modalLayout}
+      {isSystemPromptsModalOpen && (
+        <SystemPromptSettingModal
+          closeModal={() => {
+            setIsSystemPromptsModalOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };
