@@ -173,7 +173,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
     }, 0);
   };
 
-  const loadNotebook = useCallback(async () => {
+  const loadNotebook = useCallback(() => {
     loadNotebookHook()
       .then(async (res) => {
         if (res.context) {
