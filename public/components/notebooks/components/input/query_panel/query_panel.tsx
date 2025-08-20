@@ -7,6 +7,7 @@ import React, { useCallback } from 'react';
 import {
   EuiButtonEmpty,
   EuiFlexGroup,
+  EuiLoadingSpinner,
   EuiPanel,
   EuiSpacer,
   EuiSuperDatePicker,
@@ -36,7 +37,7 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({ prependWidget, appendWid
       },
     },
   } = useOpenSearchDashboards<NoteBookServices>();
-  const { inputValue, handleInputChange, handleSubmit } = useInputContext();
+  const { inputValue, handleInputChange, handleSubmit, isLoading } = useInputContext();
 
   const queryState = inputValue as QueryState;
   const { timeRange } = queryState || {};
@@ -44,22 +45,23 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({ prependWidget, appendWid
   const handleSelect = useCallback(
     (dataset) => {
       data.query.queryString.setQuery({ dataset });
-      handleInputChange({ ...queryState, selectedIndex: dataset });
+      handleInputChange({ selectedIndex: dataset });
     },
-    [data.query.queryString, queryState, handleInputChange]
+    [data.query.queryString, handleInputChange]
   );
 
   const handleTimeChange = useCallback(
     (props) => {
-      handleInputChange({ ...queryState, timeRange: props });
+      handleInputChange({ timeRange: { from: props.start, to: props.end } });
     },
-    [queryState, handleInputChange]
+    [handleInputChange]
   );
 
   return (
     <EuiPanel paddingSize="none" hasBorder={false} hasShadow={false}>
       <EuiFlexGroup className="notebookQueryPanelWidgets" gutterSize="none" dir="row">
         {prependWidget}
+        {prependWidget && <div className="notebookQueryPanelWidgets__verticalSeparator" />}
         <div className="notebookQueryPanelWidgets__datasetSelect">
           {/* <IndexSelect /> */}
           {/* FIXME dataset select cause unncessary http requests due to rerender */}
@@ -68,19 +70,26 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({ prependWidget, appendWid
         <div className="notebookQueryPanelWidgets__verticalSeparator" />
         <div className="notebookQueryPanelWidgets__datePicker">
           <EuiSuperDatePicker
-            start={timeRange?.start}
-            end={timeRange?.end}
+            start={timeRange?.from}
+            end={timeRange?.to}
             onTimeChange={handleTimeChange}
             compressed
             showUpdateButton={false}
             dateFormat={uiSettings!.get('dateFormat')}
           />
         </div>
-        <EuiFlexGroup gutterSize="none" dir="row" justifyContent="flexEnd">
-          <EuiButtonEmpty iconType="play" size="s" aria-label="run button" onClick={handleSubmit}>
+        <EuiFlexGroup gutterSize="none" dir="row" justifyContent="flexEnd" alignItems="center">
+          {isLoading && <EuiLoadingSpinner size="m" />}
+          <EuiButtonEmpty
+            iconType={isLoading ? undefined : 'play'}
+            size="s"
+            aria-label="run button"
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
             Run
           </EuiButtonEmpty>
-          <div className="notebookQueryPanelWidgets__verticalSeparator" />
+          {appendWidget && <div className="notebookQueryPanelWidgets__verticalSeparator" />}
           {appendWidget}
         </EuiFlexGroup>
       </EuiFlexGroup>
