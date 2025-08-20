@@ -48,6 +48,7 @@ import { useNotebook } from '../../../hooks/use_notebook';
 import { usePrecheck } from '../../../hooks/use_precheck';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { AlertPanel } from './alert_panel';
+import { GlobalPanel } from './global_panel';
 import { NotebookHeader } from './notebook_header';
 
 const panelStyles: CSS.Properties = {
@@ -232,6 +233,8 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
           )}
           {source === NoteBookSource.ALERTING && <AlertPanel />}
           <EuiSpacer />
+          <GlobalPanel />
+          <EuiSpacer />
           <EuiPageContent style={{ width: 900 }} horizontalPosition="center">
             {isLoading ? (
               <EuiEmptyPrompt icon={<EuiLoadingContent />} title={<h2>Loading Notebook</h2>} />
@@ -242,6 +245,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
                   ref={(ref) => (paraDivRefs.current[index] = ref)}
                   key={`para_div_${paragraphState.value.id}`}
                 >
+                  {index > 0 && <EuiSpacer size="s" />}
                   <Paragraphs
                     paragraphState={paragraphState}
                     index={index}
