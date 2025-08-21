@@ -67,7 +67,7 @@ const PLAN_EXECUTE_REFLECT_RESPONSE_FORMAT =
   'Example 2 - When you have the final result:\n' +
   '{\n' +
   '\t"steps": [],\n' +
-  '\t"result": "This is an example result\n with escaped special characters"\n' +
+  '\t"result": "This is an example result\\n with escaped special characters"\n' +
   '}\n' +
   'Important rules for the response:\n' +
   '1. Do not use commas within individual steps \n' +
