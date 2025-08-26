@@ -134,9 +134,15 @@ export const useNotebook = () => {
         res.context?.timeField &&
         res.context?.timeRange
       ) {
+        let indexInsight;
+        try {
+          indexInsight = await fetchIndexInsights(res.context.index, res.context?.dataSourceId);
+        } catch (error) {
+          console.error('Failed to load index insight:', error);
+        }
         contextPayload = {
           ...contextPayload,
-          indexInsight: await fetchIndexInsights(res.context.index, res.context?.dataSourceId),
+          indexInsight,
         };
       }
       return {
