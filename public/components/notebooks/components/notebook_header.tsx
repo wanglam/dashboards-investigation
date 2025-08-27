@@ -459,6 +459,9 @@ export const NotebookHeader = ({
   useEffect(() => {
     if (newNavigation) {
       chrome.setHeaderVariant(HeaderVariant.APPLICATION);
+      return () => {
+        chrome.setHeaderVariant(HeaderVariant.PAGE);
+      };
     }
   }, [chrome, newNavigation]);
 
