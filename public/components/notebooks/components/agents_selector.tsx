@@ -8,9 +8,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import _ from 'lodash';
 
 import type { NoteBookServices } from 'public/types';
-import { searchMLCommonsAgents } from '../../../../../utils/ml_commons_apis';
-import { CoreStart } from '../../../../../../../../src/core/public';
-import { useOpenSearchDashboards } from '../../../../../../../../src/plugins/opensearch_dashboards_react/public';
+import { searchMLCommonsAgents } from '../../../utils/ml_commons_apis';
+import { CoreStart } from '../../../../../../src/core/public';
+import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 
 // Create a debounced request function that's memoized by data source ID
 const fetchPERAgents = _.memoize(
@@ -49,11 +49,13 @@ export const AgentsSelector = ({
   value,
   onChange,
   disabled,
+  autoSelectFirst = false,
 }: {
   dataSourceMDSId: string | undefined;
   value: string | undefined;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
+  autoSelectFirst?: boolean;
 }) => {
   const {
     services: { http },
@@ -69,7 +71,7 @@ export const AgentsSelector = ({
       if (!canceled) {
         const agentResults = hits.hits.map(({ _id, _source: { name } }) => ({ id: _id, name }));
         setAgents(agentResults);
-        if (!valueRef.current) {
+        if (autoSelectFirst && !valueRef.current) {
           const recommendAgent = agentResults.find(
             ({ name }) => name.includes('3.7') && name.includes('ppl')
           );
@@ -80,7 +82,7 @@ export const AgentsSelector = ({
     return () => {
       canceled = true;
     };
-  }, [http, dataSourceMDSId]);
+  }, [http, dataSourceMDSId, autoSelectFirst]);
 
   const options = useMemo(() => agents.map(({ id, name }) => ({ text: name, value: id })), [
     agents,

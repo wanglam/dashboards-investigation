@@ -185,6 +185,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
           path: res.path,
           vizPrefix: res.vizPrefix,
           paragraphs: res.paragraphs.map((paragraph) => new ParagraphState<unknown>(paragraph)),
+          owner: res.owner,
         });
         await setInitialGoal({
           context: notebookContext.state.value.context.value,

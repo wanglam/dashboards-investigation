@@ -10,6 +10,7 @@ import {
   EuiPopover,
   EuiSmallButtonIcon,
 } from '@elastic/eui';
+import { of } from 'rxjs';
 import { useState } from 'react';
 import { useContext } from 'react';
 import { useObservable } from 'react-use';
@@ -25,6 +26,8 @@ export const ParagraphActionPanel = (props: {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { state } = useContext(NotebookReactContext);
   const paragraphStates = useObservable(state.getParagraphStates$(), state.value.paragraphs);
+  const paragraphActions = useObservable(paragraphStates[idx]?.getValue$() ?? of(undefined))
+    ?.uiState?.actions;
   const { moveParagraph: moveParaHook, cloneParagraph } = useParagraphs();
   const movePara = (index: number, targetIndex: number) => {
     return moveParaHook(index, targetIndex).then((_res) => props.scrollToPara(targetIndex));
@@ -81,6 +84,13 @@ export const ParagraphActionPanel = (props: {
             props.deletePara(idx);
           },
         },
+        ...(paragraphActions ?? []).map(({ name, action }) => ({
+          name,
+          onClick: () => {
+            setIsPopoverOpen(false);
+            action();
+          },
+        })),
       ],
     },
   ];

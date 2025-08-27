@@ -3,36 +3,45 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useEffect, useContext, useCallback } from 'react';
+import React, { useMemo, useEffect, useContext, useCallback, useState } from 'react';
 import { useObservable } from 'react-use';
 import {
-  EuiCodeBlock,
-  EuiCompressedFormRow,
-  EuiCompressedTextArea,
+  EuiAvatar,
   EuiFlexGroup,
   EuiFlexItem,
-  EuiSmallButton,
+  EuiMarkdownFormat,
+  EuiModal,
+  EuiModalBody,
+  EuiModalHeader,
+  EuiPanel,
   EuiSpacer,
+  EuiTabbedContent,
+  EuiText,
 } from '@elastic/eui';
 
 import type { NoteBookServices } from 'public/types';
 import type { DeepResearchInputParameters, DeepResearchOutputResult } from 'common/types/notebooks';
 
-import { DataSourceSelectorProps } from '../../../../../../../../src/plugins/data_source_management/public/components/data_source_selector/data_source_selector';
 import { useOpenSearchDashboards } from '../../../../../../../../src/plugins/opensearch_dashboards_react/public';
-import { dataSourceFilterFn } from '../../../../../../common/utils/shared';
 import {
   ParagraphState,
   ParagraphStateValue,
 } from '../../../../../../common/state/paragraph_state';
 import { useParagraphs } from '../../../../../hooks/use_paragraphs';
-import { ParagraphDataSourceSelector } from '../../data_source_selector';
-import { getSystemPrompts } from '../../helpers/custom_modals/system_prompt_setting_modal';
+import { getLocalInputParameters } from '../../helpers/per_agent_helpers';
 
-import { AgentsSelector } from './agents_selector';
 import { DeepResearchOutput } from './deep_research_output';
 import { NotebookReactContext } from '../../../context_provider/context_provider';
-import { DEEP_RESEARCH_PARAGRAPH_TYPE } from '../../../../../../common/constants/notebooks';
+import {
+  AI_RESPONSE_TYPE,
+  DEEP_RESEARCH_PARAGRAPH_TYPE,
+} from '../../../../../../common/constants/notebooks';
+import { isStateCompletedOrFailed } from '../../../../../../common/utils/task';
+
+import { StepDetailsModal } from './step_details_modal';
+import { PERAgentTaskService } from './services/per_agent_task_service';
+import { MessageTraceFlyout } from './message_trace_flyout';
+import { PERAgentMemoryService } from './services/per_agent_memory_service';
 
 export const DeepResearchParagraph = ({
   paragraphState,
@@ -42,15 +51,38 @@ export const DeepResearchParagraph = ({
   const {
     services: { http },
   } = useOpenSearchDashboards<NoteBookServices>();
+  const PERAgentServices = useMemo(() => {
+    const taskService = new PERAgentTaskService(http);
+    const executorMemoryService = new PERAgentMemoryService(
+      http,
+      taskService.getExecutorMemoryId$(),
+      () => {
+        const task = taskService.getTaskValue();
+        return !!task && !isStateCompletedOrFailed(task.state);
+      }
+    );
+    return {
+      task: taskService,
+      executorMemory: executorMemoryService,
+    };
+  }, [http]);
+  const observables = useMemo(
+    () => ({
+      executorMemoryId$: PERAgentServices.task.getExecutorMemoryId$(),
+    }),
+    [PERAgentServices.task]
+  );
+  const executorMemoryId = useObservable(observables.executorMemoryId$);
+
   const { state } = useContext(NotebookReactContext);
+  const [stepDetailMessageId, setStepDetailMessageId] = useState<string>();
+  const [showContextModal, setShowContextModal] = useState(false);
+  const [traceMessageId, setTraceMessageId] = useState<string>();
+  const [showSteps, setShowSteps] = useState(true);
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const contextValue = useObservable(state.value.context.getValue$(), state.value.context.value);
-  const selectedDataSource = paragraphValue?.dataSourceMDSId;
-  const onSelectedDataSource: DataSourceSelectorProps['onSelectedDataSource'] = (event) => {
-    paragraphState.updateValue({
-      dataSourceMDSId: event[0] ? event[0].id : undefined,
-    });
-  };
+  const input =
+    (paragraphValue.input.parameters as DeepResearchInputParameters) || paragraphValue.input;
 
   const { runParagraph } = useParagraphs();
   const rawOutputResult = ParagraphState.getOutput(paragraphValue)?.result;
@@ -76,17 +108,11 @@ export const DeepResearchParagraph = ({
     return undefined;
   }, [rawOutputResult]);
 
-  const deepResearchAgentId = paragraphValue.input.parameters?.agentId || outputResult?.agent_id;
-
-  const isRunning = paragraphValue.uiState?.isRunning;
-
   const runParagraphHandler = useCallback(
     async (inputPayload?: Partial<ParagraphStateValue['input']>) => {
       paragraphState.updateInput({
         ...inputPayload,
-        parameters: {
-          prompts: getSystemPrompts(),
-        },
+        parameters: getLocalInputParameters(),
       });
       await runParagraph({
         id: paragraphValue.id,
@@ -111,94 +137,180 @@ export const DeepResearchParagraph = ({
     }
   }, [contextValue, paragraphValue, outputResult, runParagraphHandler]);
 
-  const isDisabled =
-    !!contextValue.initialGoal && paragraphValue.input.inputType === DEEP_RESEARCH_PARAGRAPH_TYPE;
+  useEffect(() => {
+    paragraphState.updateUIState({
+      actions: [
+        ...(executorMemoryId
+          ? [
+              {
+                name: `${showSteps ? 'Hide' : 'Show'} steps`,
+                action: () => {
+                  setShowSteps((flag) => !flag);
+                },
+              },
+            ]
+          : []),
+        ...(outputResult?.taskId
+          ? [
+              {
+                name: 'Show agent inputs',
+                action: () => {
+                  setShowContextModal(true);
+                },
+              },
+            ]
+          : []),
+        ...(paragraphValue.input.inputType === AI_RESPONSE_TYPE
+          ? [
+              {
+                name: 'Re-Run',
+                action: runParagraphHandler,
+              },
+            ]
+          : []),
+      ],
+    });
+  }, [
+    paragraphState,
+    outputResult?.taskId,
+    executorMemoryId,
+    showSteps,
+    paragraphValue.input.inputType,
+    runParagraphHandler,
+  ]);
+
+  useEffect(() => {
+    const taskId = outputResult?.taskId;
+    const dataSourceId = paragraphValue.dataSourceMDSId;
+    if (!taskId) {
+      PERAgentServices.task.reset();
+      return;
+    }
+    PERAgentServices.task.setup({
+      taskId,
+      dataSourceId,
+    });
+    return () => {
+      PERAgentServices.task.stop('Unmount');
+    };
+  }, [outputResult?.taskId, paragraphValue.dataSourceMDSId, PERAgentServices.task]);
+
+  useEffect(() => {
+    PERAgentServices.executorMemory.setup({
+      dataSourceId: paragraphValue.dataSourceMDSId,
+    });
+    return () => {
+      PERAgentServices.executorMemory.stop('Unmount');
+    };
+  }, [paragraphValue.dataSourceMDSId, http, PERAgentServices.executorMemory]);
+
+  useEffect(() => {
+    if (paragraphValue.uiState?.isRunning) {
+      PERAgentServices.task.reset();
+    }
+  }, [paragraphValue.uiState?.isRunning, PERAgentServices.task]);
 
   return (
     <>
-      <EuiFlexGroup style={{ marginTop: 0 }}>
-        <EuiFlexItem>
-          <ParagraphDataSourceSelector
-            disabled={!!isRunning || isDisabled}
-            fullWidth={false}
-            onSelectedDataSource={onSelectedDataSource}
-            selectedDataSourceId={selectedDataSource}
-            dataSourceFilter={dataSourceFilterFn}
-          />
-        </EuiFlexItem>
-        <EuiFlexItem>
-          <AgentsSelector
-            value={deepResearchAgentId}
-            dataSourceMDSId={selectedDataSource}
-            onChange={(value) => {
-              paragraphState.updateInput({
-                parameters: {
-                  agentId: value,
-                },
-              });
-            }}
-            disabled={!!isRunning || isDisabled}
-          />
-        </EuiFlexItem>
-      </EuiFlexGroup>
-      <EuiSpacer size="s" />
-      <EuiCompressedFormRow fullWidth={true}>
-        <div style={{ width: '100%' }}>
-          {!isDisabled ? (
-            <EuiCompressedTextArea
-              data-test-subj={`editorArea-${paragraphValue.id}`}
-              placeholder="Ask a question"
-              id={`editorArea-${paragraphValue.id}`}
-              className="editorArea"
-              fullWidth
-              disabled={!!isRunning}
-              onChange={(evt) => {
-                paragraphState.updateInput({
-                  inputText: evt.target.value,
-                });
-                paragraphState.updateUIState({
-                  isOutputStale: true,
-                });
-              }}
-              onKeyUp={(evt) => {
-                if (evt.key === 'Enter' && evt.shiftKey) {
-                  runParagraphHandler();
-                }
-              }}
-              value={paragraphValue.input.inputText}
-              autoFocus
-            />
-          ) : (
-            <EuiCodeBlock
-              data-test-subj={`paraInputCodeBlock-${paragraphValue.id}`}
-              overflowHeight={200}
-              paddingSize="s"
-            >
-              {paragraphValue.input.inputText}
-            </EuiCodeBlock>
-          )}
-        </div>
-      </EuiCompressedFormRow>
-      <EuiSpacer size="m" />
-      <EuiFlexGroup alignItems="center" gutterSize="s">
+      <EuiFlexGroup gutterSize="s" alignItems="flexStart">
         <EuiFlexItem grow={false}>
-          <EuiSmallButton
-            data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
-            onClick={() => {
-              runParagraphHandler();
-            }}
-          >
-            {outputResult && 'taskId' in outputResult ? 'Refresh' : 'Run'}
-          </EuiSmallButton>
+          <EuiAvatar name={state.value.owner ?? 'User'} size="l" />
         </EuiFlexItem>
+        <EuiFlexItem>
+          <EuiPanel paddingSize="m" hasShadow={false} color="subdued">
+            <EuiText size="s">
+              <p>{paragraphValue.input.inputText}</p>
+            </EuiText>
+          </EuiPanel>
+        </EuiFlexItem>
+        <EuiFlexItem grow={false} />
       </EuiFlexGroup>
       <EuiSpacer size="m" />
-      {outputResult && 'taskId' in outputResult && (
-        <DeepResearchOutput
-          outputResult={outputResult}
-          dataSourceId={selectedDataSource}
-          http={http}
-          input={paragraphValue.input.parameters || (paragraphValue.input as any)}
+      <DeepResearchOutput
+        isRunning={!!paragraphState.value.uiState?.isRunning}
+        taskService={PERAgentServices.task}
+        executorMemoryService={PERAgentServices.executorMemory}
+        outputTaskId={outputResult?.taskId}
+        showSteps={showSteps}
+        onViewDetails={setStepDetailMessageId}
+        onExplainThisStep={setTraceMessageId}
+      />
+      <EuiSpacer />
+      {stepDetailMessageId && (
+        <StepDetailsModal
+          onStepExplain={(messageId) => {
+            setTraceMessageId(messageId);
+            setStepDetailMessageId(undefined);
+          }}
+          closeModal={() => {
+            setStepDetailMessageId(undefined);
+          }}
+          taskService={PERAgentServices.task}
+          executorMemoryService={PERAgentServices.executorMemory}
+          defaultExpandMessageId={stepDetailMessageId}
+        />
+      )}
+      {/* FIXME this is used for debug */}
+      {showContextModal && (
+        <EuiModal onClose={() => setShowContextModal(false)}>
+          <EuiModalHeader>Context</EuiModalHeader>
+          <EuiModalBody>
+            <EuiTabbedContent
+              tabs={[
+                ...((input as DeepResearchInputParameters)?.PERAgentInput
+                  ? [
+                      {
+                        id: 'agentInput',
+                        name: 'Agent input',
+                        content: (
+                          <>
+                            <EuiMarkdownFormat>
+                              {`\`\`\`json
+${JSON.stringify(
+  {
+    ...input?.PERAgentInput,
+    body: JSON.parse(input?.PERAgentInput.body),
+  },
+  null,
+  2
+)}
+                      \`\`\`
+                      `}
+                            </EuiMarkdownFormat>
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(input?.PERAgentContext
+                  ? [
+                      {
+                        id: 'agentContext',
+                        name: 'Agent context',
+                        content: (
+                          <>
+                            <EuiMarkdownFormat>
+                              {input?.PERAgentContext || 'No context'}
+                            </EuiMarkdownFormat>
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </EuiModalBody>
+        </EuiModal>
+      )}
+      {traceMessageId && (
+        <MessageTraceFlyout
+          messageId={traceMessageId}
+          taskService={PERAgentServices.task}
+          executorMemoryService={PERAgentServices.executorMemory}
+          onClose={() => {
+            setTraceMessageId(undefined);
+          }}
+          dataSourceId={paragraphValue.dataSourceMDSId}
         />
       )}
     </>
