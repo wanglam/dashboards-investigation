@@ -249,9 +249,10 @@ export const PPLParagraph = ({
               inputType: getInputType(paragraphValue).toUpperCase(),
               parameters: paragraphValue.input.parameters,
             }}
-            onSubmit={(value) => {
+            onSubmit={({ inputText, inputType, parameters }) => {
               paragraphState.updateInput({
-                inputText: value,
+                inputText: inputType === 'SQL' ? `%sql\n${inputText}` : `%ppl\n${inputText}`,
+                parameters,
               });
               paragraphState.updateUIState({
                 isOutputStale: true,

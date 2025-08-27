@@ -14,6 +14,7 @@ import {
 } from '@elastic/eui';
 import autosize from 'autosize';
 import { useEffectOnce } from 'react-use';
+import { ParagraphInputType } from 'common/types/notebooks';
 import { InputTypeSelector } from './input_type_selector';
 import { QueryPanel } from './query_panel';
 import { InputProvider, useInputContext } from './input_context';
@@ -22,8 +23,8 @@ import { MarkDownInput } from './markdown_input';
 import { AI_RESPONSE_TYPE } from '../../../../../common/constants/notebooks';
 
 interface MultiVariantInputProps<TParameters = unknown> {
-  input?: { inputText: string; inputType: string; parameters?: TParameters };
-  onSubmit?: (paragraphInput: any, inputType: string) => void;
+  input?: ParagraphInputType<TParameters>;
+  onSubmit: (input: ParagraphInputType<TParameters>) => void;
 }
 
 const MultiVariantInputContent: React.FC = () => {

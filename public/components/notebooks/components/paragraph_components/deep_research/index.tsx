@@ -198,7 +198,7 @@ export const DeepResearchParagraph = ({
           outputResult={outputResult}
           dataSourceId={selectedDataSource}
           http={http}
-          input={paragraphValue.input.parameters || paragraphValue.input}
+          input={paragraphValue.input.parameters || (paragraphValue.input as any)}
         />
       )}
     </>

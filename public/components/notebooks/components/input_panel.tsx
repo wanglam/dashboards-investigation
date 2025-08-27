@@ -3,11 +3,67 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useCallback, useContext } from 'react';
+import { useObservable } from 'react-use';
 import { EuiPanel } from '@elastic/eui';
+import { ParagraphInputType } from 'common/types/notebooks';
 import { MultiVariantInput } from './input/multi_variant_input';
+import { useParagraphs } from '../../../../public/hooks/use_paragraphs';
+import { NotebookReactContext } from '../context_provider/context_provider';
 
 export const InputPanel: React.FC = () => {
+  const { createParagraph, runParagraph } = useParagraphs();
+
+  const context = useContext(NotebookReactContext);
+  const notebookState = useObservable(context.state.getValue$(), context.state.value);
+  const paragraphs = notebookState.paragraphs.map((item) => item.value);
+  const { dataSourceId } = useObservable(
+    context.state.value.context.getValue$(),
+    context.state.value.context.value
+  );
+
+  const handleCreateParagraph = useCallback(
+    async ({ inputText, inputType, parameters }: ParagraphInputType) => {
+      let typedInputText = inputText;
+      let createInputType = inputType;
+
+      switch (inputType) {
+        case 'SQL':
+          typedInputText = `%sql\n${inputText}`;
+          createInputType = 'CODE';
+          break;
+        case 'PPL':
+          typedInputText = `%ppl\n${inputText}`;
+          createInputType = 'CODE';
+          break;
+        case 'MARKDOWN':
+          typedInputText = `%md\n${inputText}`;
+          break;
+      }
+
+      try {
+        // Add paragraph at the end
+        const createParagraphRes = await createParagraph({
+          index: paragraphs.length,
+          input: {
+            inputText: typedInputText,
+            inputType: createInputType,
+            parameters,
+          },
+          dataSourceMDSId: dataSourceId,
+        });
+        if (createParagraphRes) {
+          await runParagraph({
+            id: createParagraphRes.value.id,
+          });
+        }
+      } catch (err) {
+        console.log(`Error while creating paragraph ${err}`);
+      }
+    },
+    [paragraphs.length, dataSourceId, createParagraph, runParagraph]
+  );
+
   return (
     <div
       style={{
@@ -20,7 +76,7 @@ export const InputPanel: React.FC = () => {
       }}
     >
       <EuiPanel grow borderRadius="xl" hasBorder hasShadow paddingSize="s">
-        <MultiVariantInput />
+        <MultiVariantInput onSubmit={handleCreateParagraph} />
       </EuiPanel>
     </div>
   );
