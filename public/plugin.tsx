@@ -30,14 +30,21 @@ import {
   setEmbeddable,
   setExpressions,
   setSearch,
+  ParagraphService,
 } from './services';
 import { Notebook, NotebookProps } from './components/notebooks/components/notebook';
 import { NOTEBOOK_APP_NAME } from '../common/constants/notebooks';
 import { OpenSearchDashboardsContextProvider } from '../../../src/plugins/opensearch_dashboards_react/public';
+import { paragraphRegistry } from './paragraphs';
 
 export class InvestigationPlugin
   implements
     Plugin<InvestigationSetup, InvestigationStart, SetupDependencies, AppPluginStartDependencies> {
+  private paragraphService: ParagraphService;
+
+  constructor() {
+    this.paragraphService = new ParagraphService();
+  }
   public setup(
     core: CoreSetup<AppPluginStartDependencies>,
     setupDeps: SetupDependencies
@@ -46,6 +53,14 @@ export class InvestigationPlugin
     setOSDHttp(core.http);
     core.getStartServices().then(([coreStart]) => {
       setOSDSavedObjectsClient(coreStart.savedObjects.client);
+    });
+
+    // Setup paragraph service
+    const paragraphServiceSetup = this.paragraphService.setup();
+
+    // Register paragraph types
+    paragraphRegistry.forEach(({ types, item }) => {
+      paragraphServiceSetup.register(types, item);
     });
 
     const getServices = async () => {
@@ -57,6 +72,7 @@ export class InvestigationPlugin
         appName: NOTEBOOK_APP_NAME,
         pplService,
         savedObjects: coreStart.savedObjects,
+        paragraphService: paragraphServiceSetup,
       };
       return services;
     };

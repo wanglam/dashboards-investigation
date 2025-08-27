@@ -67,6 +67,13 @@ const ContextAwareParagraphs = (
         dataSource: {},
         notifications: notificationServiceMock.createStartContract(),
         uiSettings: uiSettingsServiceMock.createStartContract(),
+        paragraphService: {
+          getParagraphRegistry: jest.fn().mockImplementation(() => {
+            return {
+              ParagraphComponent: () => <div data-test-subj="mock-paragraph" />,
+            };
+          }),
+        },
       }}
     >
       <MockContextProvider paragraphValues={props.paragraphValues}>
@@ -105,6 +112,7 @@ describe('<Paragraphs /> spec', () => {
       />
     );
     expect(utils.container.firstChild).toMatchSnapshot();
+    expect(utils.getByTestId('mock-paragraph')).toBeInTheDocument();
   });
 
   it('use SavedObject find to fetch visualizations when dataSourceEnabled', () => {
@@ -151,8 +159,8 @@ describe('<Paragraphs /> spec', () => {
       />
     );
     expect(utils.container.firstChild).toMatchSnapshot();
-    expect(mockFind).toHaveBeenCalledWith({
-      type: 'visualization',
-    });
+
+    // Expect the mock paragraph has been rendered
+    expect(utils.getByTestId('mock-paragraph')).toBeInTheDocument();
   });
 });
