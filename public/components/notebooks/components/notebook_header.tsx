@@ -66,10 +66,15 @@ export const NotebookHeader = ({
   } = useOpenSearchDashboards<NoteBookServices>();
   const newNavigation = chrome.navGroup.getNavGroupEnabled();
   const notebookContext = useContext(NotebookReactContext);
-  const { dataSourceEnabled, id: openedNoteId, path, dateCreated, dateModified } = useObservable(
-    notebookContext.state.getValue$(),
-    notebookContext.state.value
-  );
+  const {
+    dataSourceEnabled,
+    id: openedNoteId,
+    path,
+    dateCreated,
+    dateModified,
+    context,
+  } = useObservable(notebookContext.state.getValue$(), notebookContext.state.value);
+  const contextValue = useObservable(context.getValue$());
 
   const [isReportingPluginInstalled, setIsReportingPluginInstalled] = useState(false);
   const [isReportingActionsPopoverOpen, setIsReportingActionsPopoverOpen] = useState(false);
@@ -590,6 +595,7 @@ export const NotebookHeader = ({
           closeModal={() => {
             setIsSystemPromptsModalOpen(false);
           }}
+          dataSourceId={contextValue?.dataSourceId}
         />
       )}
     </>

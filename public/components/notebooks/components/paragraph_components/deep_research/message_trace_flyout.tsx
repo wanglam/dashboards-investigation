@@ -2,29 +2,33 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import moment from 'moment';
 import MarkdownRender from '@nteract/markdown';
 import {
-  EuiModal,
-  EuiModalHeader,
-  EuiModalBody,
-  EuiModalFooter,
-  EuiButton,
-  EuiModalHeaderTitle,
   EuiAccordion,
   EuiText,
   EuiSpacer,
   EuiLoadingContent,
   EuiCodeBlock,
   EuiErrorBoundary,
+  EuiFlyout,
+  EuiFlyoutHeader,
+  EuiTitle,
+  EuiFlyoutBody,
 } from '@elastic/eui';
+import { useObservable } from 'react-use';
+import { timer } from 'rxjs';
+import { concatMap } from 'rxjs/operators';
 import type { NoteBookServices } from 'public/types';
 
 import { getTimeGapFromDates } from '../../../../../utils/time';
+import { isStateCompletedOrFailed } from '../../../../../../common/utils/task';
 import { useOpenSearchDashboards } from '../../../../../../../../src/plugins/opensearch_dashboards_react/public';
 
 import { getAllTracesByMessageId, isMarkdownText } from './utils';
+import { PERAgentTaskService } from './services/per_agent_task_service';
+import { PERAgentMemoryService } from './services/per_agent_memory_service';
 
 const renderTraceString = ({ text, fallback }: { text: string | undefined; fallback: string }) => {
   if (!text) {
@@ -53,63 +57,78 @@ const renderTraceString = ({ text, fallback }: { text: string | undefined; fallb
   );
 };
 
-export const MessageTraceModal = ({
+export const MessageTraceFlyout = ({
   messageId,
-  messageCreateTime,
-  closeModal,
   dataSourceId,
-  refresh,
+  onClose,
+  taskService,
+  executorMemoryService,
 }: {
   messageId: string;
-  messageCreateTime: string;
-  closeModal: () => void;
   dataSourceId?: string;
-  refresh: boolean;
+  onClose: () => void;
+  taskService: PERAgentTaskService;
+  executorMemoryService: PERAgentMemoryService;
 }) => {
   const {
     services: { http },
   } = useOpenSearchDashboards<NoteBookServices>();
   const [traces, setTraces] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  useEffect(() => {
-    const abortController = new AbortController();
-    let canceled = false;
-    const fetchAllTraces = async () => {
-      try {
-        if (!canceled) {
-          setIsLoading(true);
-        }
-        const messageTraces = await getAllTracesByMessageId({
-          http,
-          messageId,
-          signal: abortController.signal,
-          dataSourceId,
-        });
+  const tracesLengthRef = useRef(traces.length);
+  tracesLengthRef.current = traces.length;
+  const observables = useMemo(
+    () => ({
+      task$: taskService.getTask$(),
+      executorMessages$: executorMemoryService.getMessages$(),
+    }),
+    [taskService, executorMemoryService]
+  );
+  const task = useObservable(observables.task$);
+  const messages = useObservable(observables.executorMessages$);
+  const messageIndex = messages?.findIndex((item) => item.message_id === messageId) ?? -1;
+  const traceMessage = messages?.[messageIndex];
+  const messageCreateTime = traceMessage?.create_time;
+  const isLastMessage = messageIndex !== -1 && messageIndex + 1 === messages?.length;
 
-        if (!canceled) {
-          setTraces(messageTraces);
-        }
-      } finally {
-        if (!refresh) {
-          setIsLoading(false);
-        }
-      }
-      await new Promise((resolve) => {
-        setTimeout(resolve, 5000);
+  const shouldLoad = useMemo(() => {
+    if (traces.length === 0) {
+      return true;
+    }
+    if (isStateCompletedOrFailed(task?.state)) {
+      return false;
+    }
+    return isLastMessage && !traceMessage?.response;
+  }, [isLastMessage, traceMessage?.response, task?.state, traces]);
+
+  useEffect(() => {
+    if (!shouldLoad) {
+      return;
+    }
+
+    const abortController = new AbortController();
+    const subscription = timer(0, 5000)
+      .pipe(
+        concatMap(() =>
+          getAllTracesByMessageId({
+            http,
+            messageId,
+            signal: abortController.signal,
+            dataSourceId,
+            nextToken: tracesLengthRef.current,
+          })
+        )
+      )
+      .subscribe((messageTraces) => {
+        setTraces((prevTraces) => [...prevTraces, ...messageTraces]);
       });
-      if (!canceled && refresh) {
-        fetchAllTraces();
-      }
-    };
-    fetchAllTraces();
     return () => {
-      abortController.abort();
-      canceled = true;
+      abortController.abort('Flyout unmount.');
+      subscription.unsubscribe();
     };
-  }, [messageId, refresh, http, dataSourceId]);
+  }, [messageId, shouldLoad, http, dataSourceId]);
 
   const renderTraces = () => {
-    if (!isLoading && traces.length === 0) {
+    if (!shouldLoad && traces.length === 0) {
       return (
         <EuiText className="markdown-output-text" size="s">
           No traces data.
@@ -133,7 +152,7 @@ export const MessageTraceModal = ({
         }
         let reason: string = input;
         let responseJson;
-        if (isFromLLM) {
+        if (isFromLLM && /^\s*\{/.test(response)) {
           try {
             responseJson = JSON.parse(response);
           } catch (e) {
@@ -191,23 +210,17 @@ export const MessageTraceModal = ({
   };
 
   return (
-    <EuiModal onClose={closeModal}>
-      <EuiModalHeader>
-        <EuiModalHeaderTitle>
-          <h1>Message trace</h1>
-        </EuiModalHeaderTitle>
-      </EuiModalHeader>
+    <EuiFlyout onClose={onClose}>
+      <EuiFlyoutHeader hasBorder>
+        <EuiTitle size="m">
+          <h2>Step trace</h2>
+        </EuiTitle>
+      </EuiFlyoutHeader>
 
-      <EuiModalBody>
+      <EuiFlyoutBody>
         {renderTraces()}
-        {isLoading && <EuiLoadingContent />}
-      </EuiModalBody>
-
-      <EuiModalFooter>
-        <EuiButton onClick={closeModal} fill>
-          Close
-        </EuiButton>
-      </EuiModalFooter>
-    </EuiModal>
+        {shouldLoad && <EuiLoadingContent />}
+      </EuiFlyoutBody>
+    </EuiFlyout>
   );
 };

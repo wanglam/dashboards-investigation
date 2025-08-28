@@ -22,6 +22,7 @@ import { useParagraphs } from './use_paragraphs';
 import { useNotebook } from './use_notebook';
 import { getInputType } from '../../common/utils/paragraph';
 import { getPPLQueryWithTimeRange } from '../utils/time';
+import { getLocalInputParameters } from '../components/notebooks/components/helpers/per_agent_helpers';
 
 export const usePrecheck = () => {
   const { updateNotebookContext } = useNotebook();
@@ -203,6 +204,7 @@ export const usePrecheck = () => {
                 input: {
                   inputText: '',
                   inputType: DEEP_RESEARCH_PARAGRAPH_TYPE,
+                  parameters: getLocalInputParameters(),
                 },
                 dataSourceMDSId: res.context?.dataSourceId,
               });

@@ -6,6 +6,11 @@
 import { ParagraphBackendType } from '../types/notebooks';
 import { ObservableState } from './observable_state';
 
+export interface ParagraphAction {
+  name: string;
+  action: () => void;
+}
+
 export interface ParagraphStateValue<
   TOutputResult = string,
   TInputParameters = unknown,
@@ -17,6 +22,7 @@ export interface ParagraphStateValue<
     inQueue?: boolean;
     isRunning?: boolean;
     isOutputStale?: boolean;
+    actions: ParagraphAction[];
   }>;
 }
 

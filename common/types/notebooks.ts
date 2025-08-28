@@ -91,6 +91,7 @@ export interface NotebookBackendType {
   context?: NotebookContext;
   path: string;
   vizPrefix?: string;
+  owner?: string;
 }
 
 export interface SummaryDataItem {

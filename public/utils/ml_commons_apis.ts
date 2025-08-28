@@ -90,7 +90,7 @@ export const getMLCommonsMemoryMessages = async ({
   memoryId: string;
   signal?: AbortSignal;
   dataSourceId?: string;
-  nextToken?: string;
+  nextToken?: string | number;
 }) =>
   callApiWithProxy({
     http,
@@ -98,11 +98,12 @@ export const getMLCommonsMemoryMessages = async ({
     path: OPENSEARCH_ML_COMMONS_API.memoryMessages.replace('{memoryId}', memoryId),
     signal,
     dataSourceId,
-    query: nextToken
-      ? {
-          next_token: nextToken,
-        }
-      : {},
+    query:
+      typeof nextToken !== 'undefined'
+        ? {
+            next_token: nextToken,
+          }
+        : {},
   });
 
 export const getMLCommonsMessageTraces = async ({
@@ -116,7 +117,7 @@ export const getMLCommonsMessageTraces = async ({
   messageId: string;
   signal?: AbortSignal;
   dataSourceId?: string;
-  nextToken?: number;
+  nextToken?: string | number;
 }) =>
   callApiWithProxy({
     http,
@@ -124,11 +125,12 @@ export const getMLCommonsMessageTraces = async ({
     path: OPENSEARCH_ML_COMMONS_API.messageTraces.replace('{messageId}', messageId),
     signal,
     dataSourceId,
-    query: nextToken
-      ? {
-          next_token: nextToken,
-        }
-      : {},
+    query:
+      typeof nextToken !== 'undefined'
+        ? {
+            next_token: nextToken,
+          }
+        : {},
   });
 
 export const searchMLCommonsAgents = ({

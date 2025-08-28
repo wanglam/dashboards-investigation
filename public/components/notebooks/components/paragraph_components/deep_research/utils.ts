@@ -14,10 +14,10 @@ export interface Trace {
 }
 
 export const getAllTracesByMessageId = async (
-  options: Omit<Parameters<typeof getMLCommonsMessageTraces>[0], 'nextToken'>
+  options: Parameters<typeof getMLCommonsMessageTraces>[0]
 ) => {
   const traces: Trace[] = [];
-  let nextToken;
+  let nextToken = options.nextToken;
   do {
     try {
       const result = await getMLCommonsMessageTraces({
@@ -37,10 +37,10 @@ export const getAllTracesByMessageId = async (
 };
 
 export const getAllMessagesByMemoryId = async (
-  options: Omit<Parameters<typeof getMLCommonsMemoryMessages>[0], 'nextToken'>
+  options: Parameters<typeof getMLCommonsMemoryMessages>[0]
 ) => {
   const messages = [];
-  let nextToken;
+  let nextToken = options.nextToken;
   do {
     try {
       const result = await getMLCommonsMemoryMessages({
