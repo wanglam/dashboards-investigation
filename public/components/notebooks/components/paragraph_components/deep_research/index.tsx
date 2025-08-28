@@ -131,7 +131,6 @@ export const DeepResearchParagraph = ({
       !paragraphValue.input.inputText &&
       paragraphValue.input.inputType === DEEP_RESEARCH_PARAGRAPH_TYPE &&
       contextValue.initialGoal &&
-      paragraphValue.input.parameters?.agentId &&
       !outputResult?.taskId
     ) {
       // automatically run paragraph if there is initial goal
