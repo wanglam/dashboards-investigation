@@ -127,10 +127,40 @@ describe('PERAgentMemoryService', () => {
     subscription.unsubscribe();
   });
 
-  test('should setup with dataSourceId', () => {
+  test('should setup with dataSourceId', async () => {
     // Setup is already done in beforeEach
-    expect(service._dataSourceId).toBe(mockDataSourceId);
-    expect(service._http).toBe(mockHttp);
+    // We can't directly test private fields, but we can test the behavior
+    // that depends on these fields being set correctly
+
+    // Create a promise to wait for messages to be updated
+    const messagesUpdated = new Promise<void>((resolve) => {
+      const subscription = service.getMessages$().subscribe((msgs) => {
+        if (msgs.length > 0) {
+          subscription.unsubscribe();
+          resolve();
+        }
+      });
+    });
+
+    // Start polling to verify the service works with the dataSourceId
+    service.startPolling();
+
+    // Wait for messages to be updated
+    await messagesUpdated;
+
+    // Verify that getAllMessagesByMemoryId was called with the correct dataSourceId
+    expect(getAllMessagesByMemoryId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataSourceId: mockDataSourceId,
+      })
+    );
+
+    // Verify that the http client is being used
+    expect(getAllMessagesByMemoryId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        http: mockHttp,
+      })
+    );
   });
 
   test('should start polling and subscribe to memory ID observable', async () => {
@@ -256,42 +286,73 @@ describe('PERAgentMemoryService', () => {
     expect(abortControllerSpy).not.toHaveBeenCalled();
   });
 
-  test('should stop polling when stopPolling is called', () => {
+  test('should stop polling when stop is called', () => {
     // Service is already set up in beforeEach
 
-    // Manually set up the abort controller
-    service._abortController = new (global.AbortController as jest.Mock)();
+    // Start polling to create an abort controller internally
+    service.startPolling();
 
-    // Create a spy on AbortController.abort
-    const abortSpy = jest.spyOn(service._abortController as any, 'abort');
+    // Get the mock AbortController instance
+    const mockAbortController = (global.AbortController as jest.Mock).mock.results[0].value;
+
+    // Create a spy on the abort method of the instance
+    const abortSpy = jest.spyOn(mockAbortController, 'abort');
 
     // Stop polling
-    service.stopPolling('Test stop');
+    service.stop('Test stop');
 
     // Verify abort was called
     expect(abortSpy).toHaveBeenCalledWith('Test stop');
-    expect(service._abortController).toBeUndefined();
+
+    // Try to start polling again to verify the abort controller was cleared
+    const abortControllerSpy = jest.spyOn(global, 'AbortController');
+    abortControllerSpy.mockClear();
+
+    service.startPolling();
+
+    // If the abort controller was properly cleared, a new one should be created
+    expect(abortControllerSpy).toHaveBeenCalled();
   });
 
   test('should clear messages when stop is called', () => {
     // Service is already set up in beforeEach
 
-    // Create a spy on stopPolling
-    const stopPollingSpy = jest.spyOn(service, 'stopPolling');
+    // First, add some messages to the service
+    (getAllMessagesByMemoryId as jest.Mock).mockResolvedValue(mockMessages);
 
-    // Stop the service
-    service.stop('Test stop');
-
-    // Verify stopPolling was called
-    expect(stopPollingSpy).toHaveBeenCalledWith('Test stop');
-
-    // Verify messages are cleared
-    let receivedMessages: any[] = [];
-    const subscription = service.getMessages$().subscribe((msgs) => {
-      receivedMessages = msgs;
+    // Create a promise to wait for messages to be updated
+    const messagesUpdated = new Promise<void>((resolve) => {
+      const subscription = service.getMessages$().subscribe((msgs) => {
+        if (msgs.length > 0) {
+          subscription.unsubscribe();
+          resolve();
+        }
+      });
     });
 
-    expect(receivedMessages).toEqual([]);
-    subscription.unsubscribe();
+    // Start polling to populate messages
+    service.startPolling();
+
+    // Wait for messages to be updated
+    return messagesUpdated.then(() => {
+      // Verify messages are populated
+      let messagesBeforeStop: any[] = [];
+      const subscriptionBefore = service.getMessages$().subscribe((msgs) => {
+        messagesBeforeStop = msgs;
+      });
+      expect(messagesBeforeStop).toEqual(mockMessages);
+      subscriptionBefore.unsubscribe();
+
+      // Stop the service
+      service.stop('Test stop');
+
+      // Verify messages are cleared
+      let messagesAfterStop: any[] = [];
+      const subscriptionAfter = service.getMessages$().subscribe((msgs) => {
+        messagesAfterStop = msgs;
+      });
+      expect(messagesAfterStop).toEqual([]);
+      subscriptionAfter.unsubscribe();
+    });
   });
 });

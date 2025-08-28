@@ -29,7 +29,7 @@ export class PERAgentMemoryService {
   }
 
   startPolling() {
-    if (!this._http || this._abortController || this._poolingFinished) {
+    if (!this._http || this._abortController) {
       return;
     }
     const http = this._http;
@@ -49,7 +49,7 @@ export class PERAgentMemoryService {
         this._messages$.next([]);
       }
 
-      if (!memoryId) {
+      if (!memoryId || this._poolingFinished) {
         return;
       }
       this._pollingMemoryId = memoryId;
@@ -83,11 +83,11 @@ export class PERAgentMemoryService {
         });
     });
     return () => {
-      this.stopPolling();
+      this._stopPolling();
     };
   }
 
-  stopPolling(reason?: string) {
+  private _stopPolling(reason?: string) {
     if (!this._abortController) {
       return;
     }
@@ -100,7 +100,7 @@ export class PERAgentMemoryService {
   }
 
   stop(reason?: string) {
-    this.stopPolling(reason);
+    this._stopPolling(reason);
     this._messages$.next([]);
   }
 

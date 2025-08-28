@@ -34,8 +34,6 @@ import { PERAgentMemoryService } from './services/per_agent_memory_service';
 interface Props {
   taskService: PERAgentTaskService;
   executorMemoryService: PERAgentMemoryService;
-  isRunning: boolean;
-  outputTaskId?: string;
   showSteps?: boolean;
   onViewDetails: (messageId: string) => void;
   onExplainThisStep: (messageId: string) => void;
@@ -43,8 +41,6 @@ interface Props {
 
 export const DeepResearchOutput = ({
   taskService,
-  isRunning,
-  outputTaskId,
   executorMemoryService,
   showSteps,
   onViewDetails,
@@ -55,11 +51,13 @@ export const DeepResearchOutput = ({
       message$: executorMemoryService.getMessages$(),
       messagePollingState$: executorMemoryService.getPollingState$(),
       task$: taskService.getTask$(),
+      executorMemoryId$: taskService.getTask$(),
     }),
     [executorMemoryService, taskService]
   );
   const task = useObservable(observables.task$);
   const executorMessages = useObservable(observables.message$);
+  const executorMessageId = useObservable(observables.executorMemoryId$);
   const loadingExecutorMessage = useObservable(observables.messagePollingState$);
 
   const finalMessage = useMemo(() => {
@@ -79,7 +77,7 @@ export const DeepResearchOutput = ({
   }, [task]);
 
   const renderTraces = () => {
-    if (!showSteps || !executorMessages || executorMessages?.length === 0) {
+    if (!showSteps) {
       return null;
     }
     return (
@@ -88,49 +86,50 @@ export const DeepResearchOutput = ({
           <h4>Steps performed</h4>
         </EuiTitle>
         <EuiSpacer size="s" />
-        {executorMessages.map((message, index) => {
-          const isLastMessageLoading =
-            index === executorMessages.length - 1 &&
-            !message.response &&
-            !isStateCompletedOrFailed(task.state);
-          return (
-            <>
-              <EuiPanel key={message.message_id} paddingSize="s" borderRadius="l" hasBorder>
-                <EuiFlexGroup alignItems="center">
-                  <EuiFlexItem grow={false}>
-                    {isLastMessageLoading ? (
-                      <EuiLoadingSpinner />
-                    ) : (
-                      <EuiIcon type="checkInCircleEmpty" color="success" />
-                    )}
-                  </EuiFlexItem>
-                  <EuiFlexItem grow>
-                    <EuiText size="s">{message.input}</EuiText>
-                  </EuiFlexItem>
-                  <EuiFlexItem grow={false}>
-                    <EuiSmallButtonEmpty
-                      iconSide="right"
-                      onClick={() => {
-                        onViewDetails(message.message_id);
-                      }}
-                    >
-                      View details
-                    </EuiSmallButtonEmpty>
-                    <EuiSmallButtonEmpty
-                      iconSide="right"
-                      onClick={() => {
-                        onExplainThisStep(message.message_id);
-                      }}
-                    >
-                      Explain this step
-                    </EuiSmallButtonEmpty>
-                  </EuiFlexItem>
-                </EuiFlexGroup>
-              </EuiPanel>
-              <EuiSpacer size="s" />
-            </>
-          );
-        })}
+        {!!executorMessages &&
+          executorMessages.map((message, index) => {
+            const isLastMessageLoading =
+              index === executorMessages.length - 1 &&
+              !message.response &&
+              !isStateCompletedOrFailed(task.state);
+            return (
+              <>
+                <EuiPanel key={message.message_id} paddingSize="s" borderRadius="l" hasBorder>
+                  <EuiFlexGroup alignItems="center">
+                    <EuiFlexItem grow={false}>
+                      {isLastMessageLoading ? (
+                        <EuiLoadingSpinner />
+                      ) : (
+                        <EuiIcon type="checkInCircleEmpty" color="success" />
+                      )}
+                    </EuiFlexItem>
+                    <EuiFlexItem grow>
+                      <EuiText size="s">{message.input}</EuiText>
+                    </EuiFlexItem>
+                    <EuiFlexItem grow={false}>
+                      <EuiSmallButtonEmpty
+                        iconSide="right"
+                        onClick={() => {
+                          onViewDetails(message.message_id);
+                        }}
+                      >
+                        View details
+                      </EuiSmallButtonEmpty>
+                      <EuiSmallButtonEmpty
+                        iconSide="right"
+                        onClick={() => {
+                          onExplainThisStep(message.message_id);
+                        }}
+                      >
+                        Explain this step
+                      </EuiSmallButtonEmpty>
+                    </EuiFlexItem>
+                  </EuiFlexGroup>
+                </EuiPanel>
+                <EuiSpacer size="s" />
+              </>
+            );
+          })}
       </>
     );
   };
@@ -148,40 +147,36 @@ export const DeepResearchOutput = ({
   return (
     <>
       {renderTraces()}
-      <EuiFlexGroup gutterSize="s" alignItems="flexStart">
-        <EuiFlexItem grow={false} />
-        <EuiFlexItem>
-          <EuiPanel paddingSize="m" hasShadow={false} color="primary">
-            {!isRunning &&
-            outputTaskId &&
-            outputTaskId === task?.taskId &&
-            finalMessage &&
-            !loadingExecutorMessage ? (
-              <>
-                <EuiText className="markdown-output-text" size="s">
-                  {isMarkdownText(finalMessage) ? (
-                    <MarkdownRender source={finalMessage} />
-                  ) : (
-                    finalMessage
-                  )}
-                </EuiText>
-                {task && task.last_update_time && task.create_time && (
-                  <EuiText size="xs" color="subdued" style={{ marginTop: '8px' }}>
-                    Total Duration:{' '}
-                    {formatTimeGap(Number(task.last_update_time) - Number(task.create_time))}
-                    &nbsp;&nbsp; Last updated: {moment(task.last_update_time).format()}
-                  </EuiText>
+      {(loadingExecutorMessage ||
+        !executorMessageId ||
+        !task ||
+        !isStateCompletedOrFailed(task.state)) && <EuiLoadingContent />}
+      {finalMessage && (
+        <EuiFlexGroup gutterSize="s" alignItems="flexStart" style={{ overflow: 'hidden' }}>
+          <EuiFlexItem grow={false} />
+          <EuiFlexItem style={{ overflow: 'hidden' }}>
+            <EuiPanel paddingSize="m" hasShadow={false} color="primary">
+              <EuiText className="markdown-output-text" size="s">
+                {isMarkdownText(finalMessage) ? (
+                  <MarkdownRender source={finalMessage} />
+                ) : (
+                  finalMessage
                 )}
-              </>
-            ) : (
-              <EuiLoadingContent />
-            )}
-          </EuiPanel>
-        </EuiFlexItem>
-        <EuiFlexItem grow={false}>
-          <EuiAvatar name="Agent" size="l" />
-        </EuiFlexItem>
-      </EuiFlexGroup>
+              </EuiText>
+              {task && task.last_update_time && task.create_time && (
+                <EuiText size="xs" color="subdued" style={{ marginTop: '8px' }}>
+                  Total Duration:{' '}
+                  {formatTimeGap(Number(task.last_update_time) - Number(task.create_time))}
+                  &nbsp;&nbsp; Last updated: {moment(task.last_update_time).format()}
+                </EuiText>
+              )}
+            </EuiPanel>
+          </EuiFlexItem>
+          <EuiFlexItem grow={false}>
+            <EuiAvatar name="Agent" size="l" />
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      )}
       <EuiSpacer />
     </>
   );

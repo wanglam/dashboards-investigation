@@ -69,6 +69,7 @@ export const DeepResearchParagraph = ({
   const observables = useMemo(
     () => ({
       executorMemoryId$: PERAgentServices.task.getExecutorMemoryId$(),
+      task$: PERAgentServices.task.getTask$(),
     }),
     [PERAgentServices.task]
   );
@@ -78,11 +79,14 @@ export const DeepResearchParagraph = ({
   const [stepDetailMessageId, setStepDetailMessageId] = useState<string>();
   const [showContextModal, setShowContextModal] = useState(false);
   const [traceMessageId, setTraceMessageId] = useState<string>();
-  const [showSteps, setShowSteps] = useState(true);
+  const [showSteps, setShowSteps] = useState(false);
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const contextValue = useObservable(state.value.context.getValue$(), state.value.context.value);
+  const task = useObservable(observables.task$);
   const input =
     (paragraphValue.input.parameters as DeepResearchInputParameters) || paragraphValue.input;
+  const taskLoaded = !!task;
+  const taskFinished = task && isStateCompletedOrFailed(task.state);
 
   const { runParagraph } = useParagraphs();
   const rawOutputResult = ParagraphState.getOutput(paragraphValue)?.result;
@@ -140,7 +144,7 @@ export const DeepResearchParagraph = ({
   useEffect(() => {
     paragraphState.updateUIState({
       actions: [
-        ...(executorMemoryId
+        ...(executorMemoryId && taskFinished
           ? [
               {
                 name: `${showSteps ? 'Hide' : 'Show'} steps`,
@@ -177,6 +181,7 @@ export const DeepResearchParagraph = ({
     showSteps,
     paragraphValue.input.inputType,
     runParagraphHandler,
+    taskFinished,
   ]);
 
   useEffect(() => {
@@ -207,8 +212,15 @@ export const DeepResearchParagraph = ({
   useEffect(() => {
     if (paragraphValue.uiState?.isRunning) {
       PERAgentServices.task.reset();
+      setShowSteps(true);
     }
   }, [paragraphValue.uiState?.isRunning, PERAgentServices.task]);
+
+  useEffect(() => {
+    if (taskLoaded) {
+      setShowSteps(!taskFinished);
+    }
+  }, [taskLoaded, taskFinished]);
 
   return (
     <>
@@ -227,10 +239,8 @@ export const DeepResearchParagraph = ({
       </EuiFlexGroup>
       <EuiSpacer size="m" />
       <DeepResearchOutput
-        isRunning={!!paragraphState.value.uiState?.isRunning}
         taskService={PERAgentServices.task}
         executorMemoryService={PERAgentServices.executorMemory}
-        outputTaskId={outputResult?.taskId}
         showSteps={showSteps}
         onViewDetails={setStepDetailMessageId}
         onExplainThisStep={setTraceMessageId}
