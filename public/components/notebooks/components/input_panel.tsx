@@ -7,11 +7,16 @@ import React, { useCallback, useContext } from 'react';
 import { useObservable } from 'react-use';
 import { EuiPanel } from '@elastic/eui';
 import { ParagraphInputType } from 'common/types/notebooks';
+import type { ParagraphState } from 'common/state/paragraph_state';
 import { MultiVariantInput } from './input/multi_variant_input';
 import { useParagraphs } from '../../../../public/hooks/use_paragraphs';
 import { NotebookReactContext } from '../context_provider/context_provider';
 
-export const InputPanel: React.FC = () => {
+interface InputPanelProps {
+  onParagraphCreated?: (paragraphState: ParagraphState<unknown, unknown>) => void;
+}
+
+export const InputPanel: React.FC<InputPanelProps> = ({ onParagraphCreated }) => {
   const { createParagraph, runParagraph } = useParagraphs();
 
   const context = useContext(NotebookReactContext);
@@ -53,6 +58,7 @@ export const InputPanel: React.FC = () => {
           dataSourceMDSId: dataSourceId,
         });
         if (createParagraphRes) {
+          onParagraphCreated?.(createParagraphRes);
           await runParagraph({
             id: createParagraphRes.value.id,
           });
@@ -61,7 +67,7 @@ export const InputPanel: React.FC = () => {
         console.log(`Error while creating paragraph ${err}`);
       }
     },
-    [paragraphs.length, dataSourceId, createParagraph, runParagraph]
+    [paragraphs.length, dataSourceId, createParagraph, runParagraph, onParagraphCreated]
   );
 
   return (

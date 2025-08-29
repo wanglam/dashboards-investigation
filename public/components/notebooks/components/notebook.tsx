@@ -164,7 +164,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
     setIsModalVisible(true);
   };
 
-  const scrollToPara = (index: number) => {
+  const scrollToPara = useCallback((index: number) => {
     setTimeout(() => {
       window.scrollTo({
         left: 0,
@@ -172,7 +172,11 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
         behavior: 'smooth',
       });
     }, 0);
-  };
+  }, []);
+
+  const handleInputPanelParagraphCreated = useCallback(() => {
+    scrollToPara(paraDivRefs.current.length - 1);
+  }, [scrollToPara]);
 
   const loadNotebook = useCallback(() => {
     loadNotebookHook()
@@ -357,7 +361,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
           </EuiPageContent>
         </EuiPageBody>
         <EuiSpacer />
-        <InputPanel />
+        <InputPanel onParagraphCreated={handleInputPanelParagraphCreated} />
       </EuiPage>
       {isModalVisible && modalLayout}
     </>
