@@ -36,19 +36,23 @@ import { Notebook, NotebookProps } from './components/notebooks/components/noteb
 import { NOTEBOOK_APP_NAME } from '../common/constants/notebooks';
 import { OpenSearchDashboardsContextProvider } from '../../../src/plugins/opensearch_dashboards_react/public';
 import { paragraphRegistry } from './paragraphs';
+import { ContextService } from './services/context_service';
 
 export class InvestigationPlugin
   implements
     Plugin<InvestigationSetup, InvestigationStart, SetupDependencies, AppPluginStartDependencies> {
   private paragraphService: ParagraphService;
+  private contextService: ContextService;
 
   constructor() {
     this.paragraphService = new ParagraphService();
+    this.contextService = new ContextService();
   }
-  public setup(
+
+  public async setup(
     core: CoreSetup<AppPluginStartDependencies>,
     setupDeps: SetupDependencies
-  ): InvestigationSetup {
+  ): Promise<InvestigationSetup> {
     uiSettingsService.init(core.uiSettings, core.notifications);
     setOSDHttp(core.http);
     core.getStartServices().then(([coreStart]) => {
@@ -62,6 +66,7 @@ export class InvestigationPlugin
     paragraphRegistry.forEach(({ types, item }) => {
       paragraphServiceSetup.register(types, item);
     });
+    const contextServiceSetup = await this.contextService.setup();
 
     const getServices = async () => {
       const [coreStart, depsStart] = await core.getStartServices();
@@ -73,6 +78,7 @@ export class InvestigationPlugin
         pplService,
         savedObjects: coreStart.savedObjects,
         paragraphService: paragraphServiceSetup,
+        contextService: contextServiceSetup,
       };
       return services;
     };

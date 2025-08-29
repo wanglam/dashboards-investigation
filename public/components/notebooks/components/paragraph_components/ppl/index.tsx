@@ -16,10 +16,10 @@ import {
   EuiText,
 } from '@elastic/eui';
 import { useObservable } from 'react-use';
-import { useEffect } from 'react';
+import { useEffectOnce } from 'react-use';
 import { useCallback } from 'react';
 import { useMemo } from 'react';
-import { useRef } from 'react';
+import { useContext } from 'react';
 import { NoteBookServices } from 'public/types';
 import { ParagraphDataSourceSelector } from '../../data_source_selector';
 import {
@@ -39,6 +39,7 @@ import { useOpenSearchDashboards } from '../../../../../../../../src/plugins/ope
 import { callOpenSearchCluster } from '../../../../../plugin_helpers/plugin_proxy_call';
 import { MultiVariantInput } from '../../input/multi_variant_input';
 import { parsePPLQuery } from '../../../../../../common/utils';
+import { NotebookReactContext } from '../../../context_provider/context_provider';
 
 export interface QueryObject {
   schema?: any[];
@@ -92,7 +93,7 @@ export const PPLParagraph = ({
   paragraphState: ParagraphState<string, unknown, QueryObject>;
 }) => {
   const {
-    services: { http, notifications },
+    services: { http, notifications, contextService },
   } = useOpenSearchDashboards<NoteBookServices>();
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const selectedDataSource = paragraphValue?.dataSourceMDSId;
@@ -110,16 +111,16 @@ export const PPLParagraph = ({
 
     return '';
   }, [queryObject]);
-  const previousRunQueryRef = useRef<string>('');
-  const searchQuery = ParagraphState.getOutput(paragraphValue)?.result || '';
+
+  const context = useContext(NotebookReactContext);
+  const notebookId = context.state.value.id;
 
   const loadQueryResultsFromInput = useCallback(
     async (paragraph: ParagraphStateValue) => {
       const queryType = paragraph.input.inputText.substring(0, 4) === '%sql' ? '_sql' : '_ppl';
-      paragraphState.updateUIState({
-        isRunning: true,
-      });
-      previousRunQueryRef.current = searchQuery;
+
+      const currentSearchQuery = ParagraphState.getOutput(paragraph)?.result || '';
+
       await callOpenSearchCluster({
         http,
         dataSourceId: paragraph.dataSourceMDSId,
@@ -127,12 +128,17 @@ export const PPLParagraph = ({
           path: `/_plugins/${queryType}`,
           method: 'POST',
           body: JSON.stringify({
-            query: searchQuery,
+            query: currentSearchQuery,
           }),
         },
       })
         .then((response) => {
           paragraphState.updateFullfilledOutput(response);
+          return contextService.setParagraphContext({
+            notebookId,
+            paragraphId: paragraph.id,
+            context: response,
+          });
         })
         .catch((err) => {
           notifications.toasts.addDanger('Error getting query output');
@@ -143,24 +149,27 @@ export const PPLParagraph = ({
               },
             },
           });
-        })
-        .finally(() => {
-          paragraphState.updateUIState({
-            isRunning: false,
-          });
         });
     },
-    [paragraphState, searchQuery, http, notifications.toasts]
+    [http, notifications.toasts, contextService, notebookId, paragraphState]
   );
 
-  useEffect(() => {
-    if (paragraphValue.uiState?.isRunning) {
-      return;
-    }
-    if (searchQuery && searchQuery !== previousRunQueryRef.current) {
-      loadQueryResultsFromInput(paragraphValue);
-    }
-  }, [paragraphValue, loadQueryResultsFromInput, searchQuery]);
+  useEffectOnce(() => {
+    const loadInitialContext = async () => {
+      try {
+        const data = await contextService.getParagraphContext(notebookId, paragraphValue.id);
+        if (data) {
+          paragraphState.updateFullfilledOutput(data.context as QueryObject);
+          return;
+        }
+        await loadQueryResultsFromInput(paragraphValue);
+      } catch (err) {
+        notifications.toasts.addDanger('Fail to load paragraph context');
+      }
+    };
+
+    loadInitialContext();
+  });
 
   const runParagraphHandler = async () => {
     const inputText = paragraphState.getBackendValue().input.inputText;
@@ -180,6 +189,8 @@ export const PPLParagraph = ({
     await runParagraph({
       id: paragraphValue.id,
     });
+
+    await loadQueryResultsFromInput(paragraphState.value);
   };
 
   // FIXME: when properly store input language

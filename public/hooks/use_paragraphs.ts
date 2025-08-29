@@ -15,7 +15,7 @@ import { useOpenSearchDashboards } from '../../../../src/plugins/opensearch_dash
 export const useParagraphs = () => {
   const context = useContext(NotebookReactContext);
   const {
-    services: { notifications, http },
+    services: { notifications, http, contextService },
   } = useOpenSearchDashboards<NoteBookServices>();
   const { id } = context.state.value;
 
@@ -198,6 +198,8 @@ export const useParagraphs = () => {
           context.state.updateValue({
             paragraphs: newParagraphs,
           });
+          // no need to await. Cleans up context in background
+          contextService.deleteParagraphContext(id, paragraph.id);
           return _res;
         })
         .catch((err) => {
