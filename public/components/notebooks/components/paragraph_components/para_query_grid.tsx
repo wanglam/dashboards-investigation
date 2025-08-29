@@ -21,18 +21,9 @@ interface RenderCellValueProps {
 function QueryDataGrid(props: QueryDataGridProps) {
   const { rowCount, queryColumns, dataValues } = props;
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  // ** Sorting config
-  const [sortingColumns, setSortingColumns] = useState([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
 
   const [isVisible, setIsVisible] = useState(false);
-
-  const onSort = useCallback(
-    (newColumns) => {
-      setSortingColumns(newColumns);
-    },
-    [setSortingColumns]
-  );
 
   const onChangeItemsPerPage = useCallback(
     (pageSize) =>
@@ -55,13 +46,13 @@ function QueryDataGrid(props: QueryDataGridProps) {
     };
   }, [dataValues]);
 
-  const getUpdatedVisibleColumns = () => {
+  const getUpdatedVisibleColumns = useCallback(() => {
     const updatedVisibleColumns = [];
     for (let index = 0; index < queryColumns.length; ++index) {
       updatedVisibleColumns.push(queryColumns[index].displayAsText);
     }
     return updatedVisibleColumns;
-  };
+  }, [queryColumns]);
 
   useEffect(() => {
     if ($('.euiDataGrid__overflow').is(':visible')) {
@@ -73,7 +64,7 @@ function QueryDataGrid(props: QueryDataGridProps) {
       }
     }, 1000);
     setVisibleColumns(getUpdatedVisibleColumns());
-  }, []);
+  }, [getUpdatedVisibleColumns]);
 
   const displayLoadingSpinner = !isVisible ? (
     <>
@@ -91,8 +82,6 @@ function QueryDataGrid(props: QueryDataGridProps) {
         columnVisibility={{ visibleColumns, setVisibleColumns }}
         rowCount={rowCount}
         renderCellValue={renderCellValue}
-        inMemory={{ level: 'sorting' }}
-        sorting={{ columns: sortingColumns, onSort }}
         pagination={{
           ...pagination,
           pageSizeOptions: [10, 20, 50],
