@@ -23,10 +23,7 @@ import {
   ParagraphBackendType,
 } from '../../../common/types/notebooks';
 import { getOpenSearchClientTransport } from '../../routes/utils';
-import {
-  executePERAgentInParagraph,
-  generateContextPromptFromParagraphs,
-} from '../../common/helpers/notebooks/per_agent';
+import { executePERAgentInParagraph } from '../../common/helpers/notebooks/per_agent';
 
 export function createParagraph<T>({
   input,
@@ -280,20 +277,12 @@ export async function runParagraph<TOutput>(
             dataSourceId: updatedParagraph.dataSourceMDSId,
           });
 
-          const contextContent = await generateContextPromptFromParagraphs({
-            paragraphs: paragraphs.slice(0, index),
-            routeContext: context,
-            notebookInfo: notebookinfo,
-            ignoreInputTypes: inputType === AI_RESPONSE_TYPE ? [] : [DEEP_RESEARCH_PARAGRAPH_TYPE],
-          });
-
           const newParagraph = await executePERAgentInParagraph({
             transport,
             paragraph: updatedParagraph as ParagraphBackendType<
               unknown,
               DeepResearchInputParameters
             >,
-            context: contextContent,
             baseMemoryId:
               inputType === AI_RESPONSE_TYPE
                 ? undefined
