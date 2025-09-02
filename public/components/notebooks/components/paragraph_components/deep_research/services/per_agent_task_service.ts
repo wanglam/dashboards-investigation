@@ -81,6 +81,6 @@ export class PERAgentTaskService {
   }
 
   private _shouldContinuePolling(task) {
-    return !task || !isStateCompletedOrFailed(task.state) || !extractExecutorMemoryId(task);
+    return !task || (!extractExecutorMemoryId(task) && !isStateCompletedOrFailed(task.state));
   }
 }
