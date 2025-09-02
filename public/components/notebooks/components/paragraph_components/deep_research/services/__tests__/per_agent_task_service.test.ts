@@ -113,7 +113,7 @@ describe('PERAgentTaskService', () => {
     (isStateCompletedOrFailed as jest.Mock).mockReturnValue(false);
 
     // Create service instance
-    service = new PERAgentTaskService();
+    service = new PERAgentTaskService(mockHttp);
   });
 
   afterEach(() => {
@@ -129,7 +129,6 @@ describe('PERAgentTaskService', () => {
   test('should setup task polling correctly', () => {
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
@@ -147,7 +146,6 @@ describe('PERAgentTaskService', () => {
   test('should update task value when new task is received', () => {
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
@@ -155,7 +153,7 @@ describe('PERAgentTaskService', () => {
     // Directly update the task value using the service's internal method
     // This simulates what happens when a new task is received from polling
     // Cast to any to bypass type checking since we're directly manipulating private properties
-    (service._task$ as any).next({ taskId: mockTaskId, ...mockTask });
+    (service as any)._task$.next({ taskId: mockTaskId, ...mockTask });
 
     // Verify task value is updated
     expect(service.getTaskValue()).toEqual({ taskId: mockTaskId, ...mockTask });
@@ -164,15 +162,14 @@ describe('PERAgentTaskService', () => {
 
   test('should stop polling when task is completed or failed', () => {
     // Create a new service instance
-    service = new PERAgentTaskService();
+    service = new PERAgentTaskService(mockHttp);
 
     // Mock isStateCompletedOrFailed to return true
     (isStateCompletedOrFailed as jest.Mock).mockReturnValue(true);
 
     // Setup the service
     service.setup({
-      http: mockHttp,
-      taskId: mockTaskId,
+      taskId: 'another-task-id',
       dataSourceId: mockDataSourceId,
     });
 
@@ -185,10 +182,10 @@ describe('PERAgentTaskService', () => {
     // In the actual service, when a completed task is received, the loading state is updated
     // We need to manually simulate this behavior in our test
     // First, directly set the loading state to false
-    (service._taskLoadingState$ as any).next(false);
+    (service as any)._taskLoadingState$.next(false);
 
     // Then simulate receiving a completed task
-    (service._task$ as any).next(completedTask);
+    (service as any)._task$.next(completedTask);
 
     // Verify loading state is set to false
     let loadingState = true;
@@ -203,7 +200,6 @@ describe('PERAgentTaskService', () => {
   test('should not update task if new task is identical to previous task', () => {
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
@@ -211,10 +207,10 @@ describe('PERAgentTaskService', () => {
     // Set initial task
     const initialTask = { taskId: mockTaskId, ...mockTask };
     // Cast to any to bypass type checking
-    (service._task$ as any).next(initialTask);
+    (service as any)._task$.next(initialTask);
 
     // Create a spy on _task$.next
-    const nextSpy = jest.spyOn(service._task$, 'next');
+    const nextSpy = jest.spyOn((service as any)._task$, 'next');
 
     // Reset the spy call count
     nextSpy.mockClear();
@@ -227,7 +223,7 @@ describe('PERAgentTaskService', () => {
       // This simulates what happens in the service when tasks are identical
       // The service should not call _task$.next in this case
     } else {
-      service._task$.next(identicalTask);
+      (service as any)._task$.next(identicalTask);
     }
 
     // Verify _task$.next was not called again
@@ -240,14 +236,12 @@ describe('PERAgentTaskService', () => {
 
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
 
     // Setup again with different task ID
     service.setup({
-      http: mockHttp,
       taskId: 'another-task-id',
       dataSourceId: mockDataSourceId,
     });
@@ -259,16 +253,15 @@ describe('PERAgentTaskService', () => {
   test('should stop subscription and abort controller when stop is called', () => {
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
 
     // Create a spy on AbortController.abort
-    const abortSpy = jest.spyOn(service._abortController, 'abort');
+    const abortSpy = jest.spyOn((service as any)._abortController, 'abort');
 
     // Store the subscription for later verification
-    const subscription = service._subscription;
+    const subscription = (service as any)._subscription;
     expect(subscription).toBeDefined();
 
     // Create a spy on subscription.unsubscribe if it exists
@@ -280,20 +273,19 @@ describe('PERAgentTaskService', () => {
     // Verify abort and unsubscribe were called
     expect(abortSpy).toHaveBeenCalledWith('Test stop');
     expect(unsubscribeSpy).toHaveBeenCalled();
-    expect(service._subscription).toBeUndefined();
+    expect((service as any)._subscription).toBeUndefined();
   });
 
   test('should extract memory ID from task', () => {
     // Setup the service
     service.setup({
-      http: mockHttp,
       taskId: mockTaskId,
       dataSourceId: mockDataSourceId,
     });
 
     // Set a task with memory ID
     // Cast to any to bypass type checking
-    (service._task$ as any).next(mockTask);
+    (service as any)._task$.next(mockTask);
 
     // Get memory ID
     let memoryId: string | undefined;
