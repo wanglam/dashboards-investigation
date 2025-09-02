@@ -6,32 +6,8 @@
 import { PERAgentTaskService } from '../per_agent_task_service';
 import { getMLCommonsTask } from '../../../../../../../utils/ml_commons_apis';
 import { isStateCompletedOrFailed } from '../../../../../../../../common/utils/task';
-
-// Mock CoreStart type for testing
-interface MockHttpInterface {
-  post: jest.Mock;
-  get: jest.Mock;
-  put: jest.Mock;
-  delete: jest.Mock;
-  head: jest.Mock;
-  options: jest.Mock;
-  patch: jest.Mock;
-  fetch: jest.Mock;
-  basePath: {
-    prepend: jest.Mock;
-    get: jest.Mock;
-    getBasePath: jest.Mock;
-    remove: jest.Mock;
-    serverBasePath: string;
-  };
-  anonymousPaths: {
-    isAnonymous: jest.Mock;
-    register: jest.Mock;
-  };
-  intercept: jest.Mock;
-  addLoadingCountSource: jest.Mock;
-  getLoadingCount$: jest.Mock;
-}
+import { httpServiceMock } from '../../../../../../../../../../src/core/public/http/http_service.mock';
+import { CoreStart } from '../../../../../../../../../../src/core/public';
 
 // Mock dependencies
 jest.mock('../../../../../../../utils/ml_commons_apis', () => ({
@@ -53,7 +29,7 @@ jest.mock('../../../../../../../../common/utils/task', () => ({
 
 describe('PERAgentTaskService', () => {
   let service: PERAgentTaskService;
-  let mockHttp: MockHttpInterface;
+  let mockHttp: CoreStart['http'];
   let mockTaskId: string;
   let mockDataSourceId: string;
   let mockTask: any;
@@ -63,30 +39,7 @@ describe('PERAgentTaskService', () => {
     jest.clearAllMocks();
 
     // Setup mock data
-    mockHttp = {
-      post: jest.fn(),
-      get: jest.fn(),
-      put: jest.fn(),
-      delete: jest.fn(),
-      head: jest.fn(),
-      options: jest.fn(),
-      patch: jest.fn(),
-      fetch: jest.fn(),
-      basePath: {
-        prepend: jest.fn(),
-        get: jest.fn(),
-        getBasePath: jest.fn(),
-        remove: jest.fn(),
-        serverBasePath: '',
-      },
-      anonymousPaths: {
-        isAnonymous: jest.fn(),
-        register: jest.fn(),
-      },
-      intercept: jest.fn(),
-      addLoadingCountSource: jest.fn(),
-      getLoadingCount$: jest.fn(),
-    };
+    mockHttp = httpServiceMock.createStartContract();
     mockTaskId = 'test-task-id';
     mockDataSourceId = 'test-datasource-id';
     mockTask = {
