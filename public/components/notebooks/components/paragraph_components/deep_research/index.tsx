@@ -18,6 +18,8 @@ import {
   EuiTabbedContent,
   EuiText,
 } from '@elastic/eui';
+import { combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import type { NoteBookServices } from 'public/types';
 import type { DeepResearchInputParameters, DeepResearchOutputResult } from 'common/types/notebooks';
@@ -36,44 +38,22 @@ import {
   AI_RESPONSE_TYPE,
   DEEP_RESEARCH_PARAGRAPH_TYPE,
 } from '../../../../../../common/constants/notebooks';
-import { isStateCompletedOrFailed } from '../../../../../../common/utils/task';
+import { extractParentInteractionId } from '../../../../../../common/utils/task';
 
 import { StepDetailsModal } from './step_details_modal';
 import { PERAgentTaskService } from './services/per_agent_task_service';
 import { MessageTraceFlyout } from './message_trace_flyout';
 import { PERAgentMemoryService } from './services/per_agent_memory_service';
+import { PERAgentMessageService } from './services/per_agent_message_service';
 
 export const DeepResearchParagraph = ({
   paragraphState,
 }: {
-  paragraphState: ParagraphState<DeepResearchOutputResult, DeepResearchInputParameters>;
+  paragraphState: ParagraphState<Partial<DeepResearchOutputResult>, DeepResearchInputParameters>;
 }) => {
   const {
     services: { http },
   } = useOpenSearchDashboards<NoteBookServices>();
-  const PERAgentServices = useMemo(() => {
-    const taskService = new PERAgentTaskService(http);
-    const executorMemoryService = new PERAgentMemoryService(
-      http,
-      taskService.getExecutorMemoryId$(),
-      () => {
-        const task = taskService.getTaskValue();
-        return !!task && !isStateCompletedOrFailed(task.state);
-      }
-    );
-    return {
-      task: taskService,
-      executorMemory: executorMemoryService,
-    };
-  }, [http]);
-  const observables = useMemo(
-    () => ({
-      executorMemoryId$: PERAgentServices.task.getExecutorMemoryId$(),
-      task$: PERAgentServices.task.getTask$(),
-    }),
-    [PERAgentServices.task]
-  );
-  const executorMemoryId = useObservable(observables.executorMemoryId$);
 
   const { state } = useContext(NotebookReactContext);
   const [stepDetailMessageId, setStepDetailMessageId] = useState<string>();
@@ -82,16 +62,51 @@ export const DeepResearchParagraph = ({
   const [showSteps, setShowSteps] = useState(false);
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const contextValue = useObservable(state.value.context.getValue$(), state.value.context.value);
-  const task = useObservable(observables.task$);
+  const PERAgentServices = useMemo(() => {
+    // FIXME: Remove the task service in the production
+    const taskService = new PERAgentTaskService(http);
+    const messageService = new PERAgentMessageService(http);
+    const executorMemoryId$ = combineLatest([
+      paragraphState.getValue$(),
+      taskService.getExecutorMemoryId$(),
+    ]).pipe(
+      map(([currentParagraphValue, executorMemoryId]) => {
+        if (
+          currentParagraphValue &&
+          !ParagraphState.getOutput(currentParagraphValue)?.result.executorAgentMemoryId
+        ) {
+          return executorMemoryId;
+        }
+        return ParagraphState.getOutput(currentParagraphValue)?.result.executorAgentMemoryId;
+      })
+    );
+    const executorMemoryService = new PERAgentMemoryService(http, executorMemoryId$, () => {
+      return !messageService.getMessageValue().response;
+    });
+    return {
+      task: taskService,
+      message: messageService,
+      executorMemory: executorMemoryService,
+      executorMemoryId$,
+    };
+  }, [http, paragraphState]);
+  const observables = useMemo(
+    () => ({
+      message$: PERAgentServices.message.getMessage$(),
+    }),
+    [PERAgentServices.message]
+  );
+  const message = useObservable(observables.message$);
   const input =
     (paragraphValue.input.parameters as DeepResearchInputParameters) || paragraphValue.input;
-  const taskLoaded = !!task;
-  const taskFinished = task && isStateCompletedOrFailed(task.state);
+  const messageLoaded = !!message;
+  const messageFinished = !!message && !!message.response;
+  const executorMemoryId = useObservable(PERAgentServices.executorMemoryId$);
 
   const { runParagraph } = useParagraphs();
   const rawOutputResult = ParagraphState.getOutput(paragraphValue)?.result;
   // FIXME: Read paragraph out directly once all notebooks store object as output
-  const outputResult = useMemo<DeepResearchOutputResult | undefined>(() => {
+  const outputResult = useMemo<Partial<DeepResearchOutputResult> | undefined>(() => {
     if (typeof rawOutputResult !== 'string' || typeof rawOutputResult === 'undefined') {
       return rawOutputResult;
     }
@@ -143,7 +158,7 @@ export const DeepResearchParagraph = ({
   useEffect(() => {
     paragraphState.updateUIState({
       actions: [
-        ...(executorMemoryId && taskFinished
+        ...(executorMemoryId && !!message?.response
           ? [
               {
                 name: `${showSteps ? 'Hide' : 'Show'} steps`,
@@ -153,7 +168,7 @@ export const DeepResearchParagraph = ({
               },
             ]
           : []),
-        ...(outputResult?.taskId
+        ...(outputResult?.messageId || outputResult?.taskId
           ? [
               {
                 name: 'Show agent inputs',
@@ -176,16 +191,27 @@ export const DeepResearchParagraph = ({
   }, [
     paragraphState,
     outputResult?.taskId,
-    executorMemoryId,
     showSteps,
     paragraphValue.input.inputType,
     runParagraphHandler,
-    taskFinished,
+    message?.response,
+    executorMemoryId,
+    outputResult?.messageId,
   ]);
 
   useEffect(() => {
-    const taskId = outputResult?.taskId;
     const dataSourceId = paragraphValue.dataSourceMDSId;
+    if (!!outputResult?.messageId) {
+      PERAgentServices.message.setup({
+        messageId: outputResult?.messageId,
+        dataSourceId,
+      });
+      return () => {
+        PERAgentServices.message.stop('Unmount..');
+      };
+    }
+    PERAgentServices.message.reset();
+    const taskId = outputResult?.taskId;
     if (!taskId) {
       PERAgentServices.task.reset();
       return;
@@ -197,7 +223,44 @@ export const DeepResearchParagraph = ({
     return () => {
       PERAgentServices.task.stop('Unmount');
     };
-  }, [outputResult?.taskId, paragraphValue.dataSourceMDSId, PERAgentServices.task]);
+  }, [
+    outputResult?.taskId,
+    outputResult?.messageId,
+    paragraphValue.dataSourceMDSId,
+    PERAgentServices.task,
+    PERAgentServices.message,
+  ]);
+
+  useEffect(() => {
+    const dataSourceId = paragraphValue.dataSourceMDSId;
+    if (!!outputResult?.messageId) {
+      PERAgentServices.message.setup({
+        messageId: outputResult?.messageId,
+        dataSourceId,
+      });
+      return () => {
+        PERAgentServices.message.stop('Unmount..');
+      };
+    }
+    PERAgentServices.message.reset();
+    const subscription = PERAgentServices.task.getTask$().subscribe((task) => {
+      if (task && extractParentInteractionId(task)) {
+        PERAgentServices.message.setup({
+          messageId: extractParentInteractionId(task),
+          dataSourceId,
+        });
+      }
+    });
+    return () => {
+      PERAgentServices.message.stop('Unmount');
+      subscription.unsubscribe();
+    };
+  }, [
+    outputResult?.messageId,
+    paragraphValue.dataSourceMDSId,
+    PERAgentServices.task,
+    PERAgentServices.message,
+  ]);
 
   useEffect(() => {
     PERAgentServices.executorMemory.setup({
@@ -210,16 +273,17 @@ export const DeepResearchParagraph = ({
 
   useEffect(() => {
     if (paragraphValue.uiState?.isRunning) {
-      PERAgentServices.task.reset();
+      // Clean the output result immediately after re-run
+      paragraphState.updateOutput({ result: {} });
       setShowSteps(true);
     }
-  }, [paragraphValue.uiState?.isRunning, PERAgentServices.task]);
+  }, [paragraphValue.uiState?.isRunning, paragraphState]);
 
   useEffect(() => {
-    if (taskLoaded) {
-      setShowSteps(!taskFinished);
+    if (messageLoaded) {
+      setShowSteps(!messageFinished);
     }
-  }, [taskLoaded, taskFinished]);
+  }, [messageLoaded, messageFinished]);
 
   return (
     <>
@@ -238,7 +302,7 @@ export const DeepResearchParagraph = ({
       </EuiFlexGroup>
       <EuiSpacer size="m" />
       <DeepResearchOutput
-        taskService={PERAgentServices.task}
+        messageService={PERAgentServices.message}
         executorMemoryService={PERAgentServices.executorMemory}
         showSteps={showSteps}
         onViewDetails={setStepDetailMessageId}
@@ -254,7 +318,7 @@ export const DeepResearchParagraph = ({
           closeModal={() => {
             setStepDetailMessageId(undefined);
           }}
-          taskService={PERAgentServices.task}
+          messageService={PERAgentServices.message}
           executorMemoryService={PERAgentServices.executorMemory}
           defaultExpandMessageId={stepDetailMessageId}
         />
@@ -314,7 +378,7 @@ ${JSON.stringify(
       {traceMessageId && (
         <MessageTraceFlyout
           messageId={traceMessageId}
-          taskService={PERAgentServices.task}
+          messageService={PERAgentServices.message}
           executorMemoryService={PERAgentServices.executorMemory}
           onClose={() => {
             setTraceMessageId(undefined);
