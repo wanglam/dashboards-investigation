@@ -4,8 +4,10 @@
  */
 
 import { useCallback, useRef } from 'react';
-import { combineLatest } from 'rxjs';
+import { combineLatest, Subject } from 'rxjs';
 import moment from 'moment';
+import { takeUntil } from 'rxjs/operators';
+
 import {
   IndexInsightContent,
   NotebookContext,
@@ -185,34 +187,37 @@ export const usePrecheck = () => {
         }
 
         if (paragraphStates.length && res.context?.initialGoal) {
+          const subscribeDestroy$ = new Subject<void>();
           const combinedObservable = combineLatest(
             paragraphStates.map((paragraphState) => paragraphState.getValue$())
           );
-          const subscription = combinedObservable.subscribe(async (paragraphValues) => {
-            const hasResult = (para?: ParagraphStateValue<unknown>) =>
-              !para?.uiState?.isRunning &&
-              ((para?.output?.[0]?.result && para.output[0].result !== '') ||
-                para?.fullfilledOutput);
+          combinedObservable
+            .pipe(takeUntil(subscribeDestroy$))
+            .subscribe(async (paragraphValues) => {
+              const hasResult = (para?: ParagraphStateValue<unknown>) =>
+                !para?.uiState?.isRunning &&
+                ((para?.output?.[0]?.result && para.output[0].result !== '') ||
+                  para?.fullfilledOutput);
 
-            const shouldCreate =
-              !deepResearchParaCreated.current &&
-              paragraphValues.every((paragraphValue) => hasResult(paragraphValue));
+              const shouldCreate =
+                !deepResearchParaCreated.current &&
+                paragraphValues.every((paragraphValue) => hasResult(paragraphValue));
 
-            if (shouldCreate) {
-              deepResearchParaCreated.current = true;
+              if (shouldCreate) {
+                deepResearchParaCreated.current = true;
+                subscribeDestroy$.next();
 
-              subscription.unsubscribe();
-              await createParagraph({
-                index: totalParagraphLength + paragraphStates.length,
-                input: {
-                  inputText: '',
-                  inputType: DEEP_RESEARCH_PARAGRAPH_TYPE,
-                  parameters: getLocalInputParameters(),
-                },
-                dataSourceMDSId: res.context?.dataSourceId,
-              });
-            }
-          });
+                await createParagraph({
+                  index: totalParagraphLength + paragraphStates.length,
+                  input: {
+                    inputText: '',
+                    inputType: DEEP_RESEARCH_PARAGRAPH_TYPE,
+                    parameters: getLocalInputParameters(),
+                  },
+                  dataSourceMDSId: res.context?.dataSourceId,
+                });
+              }
+            });
         }
       },
       [createParagraph, runParagraph]
