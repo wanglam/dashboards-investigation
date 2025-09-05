@@ -88,12 +88,15 @@ export const getQueryOutputData = (queryObject: QueryObject) => {
 
 export const PPLParagraph = ({
   paragraphState,
+  actionDisabled,
 }: {
   paragraphState: ParagraphState<string, unknown, QueryObject>;
+  actionDisabled: boolean;
 }) => {
   const {
     services: { http, notifications, contextService },
   } = useOpenSearchDashboards<NoteBookServices>();
+
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const { runParagraph, saveParagraph } = useParagraphs();
   const queryObject = paragraphValue.fullfilledOutput;
@@ -311,6 +314,7 @@ export const PPLParagraph = ({
               });
               runParagraphHandler();
             }}
+            actionDisabled={actionDisabled}
           />
         </div>
       </EuiCompressedFormRow>

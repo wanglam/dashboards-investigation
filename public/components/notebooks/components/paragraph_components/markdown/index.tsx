@@ -22,7 +22,13 @@ import { useParagraphs } from '../../../../../hooks/use_paragraphs';
 const inputPlaceholderString =
   'Type %md on the first line to define the input type. \nCode block starts here.';
 
-export const MarkdownParagraph = ({ paragraphState }: { paragraphState: ParagraphState }) => {
+export const MarkdownParagraph = ({
+  paragraphState,
+  actionDisabled,
+}: {
+  paragraphState: ParagraphState;
+  actionDisabled: boolean;
+}) => {
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
   const { runParagraph } = useParagraphs();
 
@@ -56,7 +62,7 @@ export const MarkdownParagraph = ({ paragraphState }: { paragraphState: Paragrap
             id={`editorArea-${paragraphValue.id}`}
             className="editorArea"
             fullWidth
-            disabled={!!isRunning}
+            disabled={!!isRunning || actionDisabled}
             onChange={(evt) => {
               paragraphState.updateInput({
                 inputText: evt.target.value,
@@ -85,18 +91,20 @@ export const MarkdownParagraph = ({ paragraphState }: { paragraphState: Paragrap
         )}
       </div>
       <EuiSpacer size="m" />
-      <EuiFlexGroup alignItems="center" gutterSize="s">
-        <EuiFlexItem grow={false}>
-          <EuiSmallButton
-            data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
-            onClick={() => {
-              runParagraphHandler();
-            }}
-          >
-            {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Refresh' : 'Run'}
-          </EuiSmallButton>
-        </EuiFlexItem>
-      </EuiFlexGroup>
+      {actionDisabled ? null : (
+        <EuiFlexGroup alignItems="center" gutterSize="s">
+          <EuiFlexItem grow={false}>
+            <EuiSmallButton
+              data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
+              onClick={() => {
+                runParagraphHandler();
+              }}
+            >
+              {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Refresh' : 'Run'}
+            </EuiSmallButton>
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      )}
       <EuiSpacer size="m" />
       {isRunning ? (
         <EuiLoadingContent />
