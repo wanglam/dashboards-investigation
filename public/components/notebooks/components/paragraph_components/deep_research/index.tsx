@@ -215,9 +215,6 @@ export const DeepResearchParagraph = ({
     PERAgentServices.executorMemory.setup({
       dataSourceId: paragraphValue.dataSourceMDSId,
     });
-    return () => {
-      PERAgentServices.executorMemory.stop('Unmount');
-    };
   }, [paragraphValue.dataSourceMDSId, http, PERAgentServices.executorMemory]);
 
   useEffect(() => {
