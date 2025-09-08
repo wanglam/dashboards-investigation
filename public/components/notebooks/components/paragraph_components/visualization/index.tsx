@@ -84,7 +84,13 @@ export const createDashboardVizObject = (value: VisualizationInputValue) => {
   return newVizObject;
 };
 
-export const VisualizationParagraph = ({ paragraphState }: { paragraphState: ParagraphState }) => {
+export const VisualizationParagraph = ({
+  paragraphState,
+  actionDisabled,
+}: {
+  paragraphState: ParagraphState;
+  actionDisabled: boolean;
+}) => {
   const endDate = useMemo(() => new Date(), []);
   const {
     services: {
@@ -185,20 +191,22 @@ export const VisualizationParagraph = ({ paragraphState }: { paragraphState: Par
         }}
       />
       <EuiSpacer size="m" />
-      <EuiFlexGroup alignItems="center" gutterSize="s">
-        <EuiFlexItem grow={false}>
-          <EuiSmallButton
-            data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
-            onClick={() => {
-              runParagraph({
-                id: paragraphValue.id,
-              });
-            }}
-          >
-            {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Refresh' : 'Run'}
-          </EuiSmallButton>
-        </EuiFlexItem>
-      </EuiFlexGroup>
+      {actionDisabled ? null : (
+        <EuiFlexGroup alignItems="center" gutterSize="s">
+          <EuiFlexItem grow={false}>
+            <EuiSmallButton
+              data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
+              onClick={() => {
+                runParagraph({
+                  id: paragraphValue.id,
+                });
+              }}
+            >
+              {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Refresh' : 'Run'}
+            </EuiSmallButton>
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      )}
       <EuiSpacer size="m" />
       {isRunning ? (
         <EuiLoadingContent />
