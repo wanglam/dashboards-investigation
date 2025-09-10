@@ -39,7 +39,6 @@ import {
 import { isStateCompletedOrFailed } from '../../../../../../common/utils/task';
 import { getInputType } from '../../../../../../common/utils/paragraph';
 
-import { StepDetailsModal } from './step_details_modal';
 import { PERAgentTaskService } from './services/per_agent_task_service';
 import { MessageTraceFlyout } from './message_trace_flyout';
 import { PERAgentMemoryService } from './services/per_agent_memory_service';
@@ -79,7 +78,6 @@ export const DeepResearchParagraph = ({
   const executorMemoryId = useObservable(observables.executorMemoryId$);
 
   const { state } = useContext(NotebookReactContext);
-  const [stepDetailMessageId, setStepDetailMessageId] = useState<string>();
   const [showContextModal, setShowContextModal] = useState(false);
   const [traceMessageId, setTraceMessageId] = useState<string>();
   const [showSteps, setShowSteps] = useState(false);
@@ -250,24 +248,9 @@ export const DeepResearchParagraph = ({
         taskService={PERAgentServices.task}
         executorMemoryService={PERAgentServices.executorMemory}
         showSteps={showSteps}
-        onViewDetails={setStepDetailMessageId}
         onExplainThisStep={setTraceMessageId}
       />
       <EuiSpacer />
-      {stepDetailMessageId && (
-        <StepDetailsModal
-          onStepExplain={(messageId) => {
-            setTraceMessageId(messageId);
-            setStepDetailMessageId(undefined);
-          }}
-          closeModal={() => {
-            setStepDetailMessageId(undefined);
-          }}
-          taskService={PERAgentServices.task}
-          executorMemoryService={PERAgentServices.executorMemory}
-          defaultExpandMessageId={stepDetailMessageId}
-        />
-      )}
       {/* FIXME this is used for debug */}
       {showContextModal && (
         <EuiModal onClose={() => setShowContextModal(false)}>

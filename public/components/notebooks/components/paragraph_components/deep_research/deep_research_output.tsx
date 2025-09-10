@@ -16,6 +16,7 @@ import {
   EuiIcon,
   EuiSmallButtonEmpty,
   EuiLoadingSpinner,
+  EuiAccordion,
 } from '@elastic/eui';
 import { useObservable } from 'react-use';
 import moment from 'moment';
@@ -35,7 +36,6 @@ interface Props {
   taskService: PERAgentTaskService;
   executorMemoryService: PERAgentMemoryService;
   showSteps?: boolean;
-  onViewDetails: (messageId: string) => void;
   onExplainThisStep: (messageId: string) => void;
 }
 
@@ -43,7 +43,6 @@ export const DeepResearchOutput = ({
   taskService,
   executorMemoryService,
   showSteps,
-  onViewDetails,
   onExplainThisStep,
 }: Props) => {
   const observables = useMemo(
@@ -95,26 +94,10 @@ export const DeepResearchOutput = ({
             return (
               <>
                 <EuiPanel key={message.message_id} paddingSize="s" borderRadius="l" hasBorder>
-                  <EuiFlexGroup alignItems="center">
-                    <EuiFlexItem grow={false}>
-                      {isLastMessageLoading ? (
-                        <EuiLoadingSpinner />
-                      ) : (
-                        <EuiIcon type="checkInCircleEmpty" color="success" />
-                      )}
-                    </EuiFlexItem>
-                    <EuiFlexItem grow>
-                      <EuiText size="s">{message.input}</EuiText>
-                    </EuiFlexItem>
-                    <EuiFlexItem grow={false}>
-                      <EuiSmallButtonEmpty
-                        iconSide="right"
-                        onClick={() => {
-                          onViewDetails(message.message_id);
-                        }}
-                      >
-                        View details
-                      </EuiSmallButtonEmpty>
+                  <EuiAccordion
+                    id={message.message_id}
+                    arrowDisplay="right"
+                    extraAction={
                       <EuiSmallButtonEmpty
                         iconSide="right"
                         onClick={() => {
@@ -123,13 +106,47 @@ export const DeepResearchOutput = ({
                       >
                         Explain this step
                       </EuiSmallButtonEmpty>
-                    </EuiFlexItem>
-                  </EuiFlexGroup>
+                    }
+                    buttonContent={
+                      <EuiFlexGroup
+                        gutterSize="s"
+                        alignItems="center"
+                        style={{ overflow: 'hidden' }}
+                      >
+                        <EuiFlexItem grow={false}>
+                          {isLastMessageLoading ? (
+                            <EuiLoadingSpinner size="m" />
+                          ) : (
+                            <EuiIcon color="success" type="checkInCircleEmpty" />
+                          )}
+                        </EuiFlexItem>
+                        <EuiFlexItem>
+                          <EuiText size="s">{message.input}</EuiText>
+                        </EuiFlexItem>
+                      </EuiFlexGroup>
+                    }
+                    paddingSize={isLastMessageLoading ? 'l' : 'none'}
+                  >
+                    {isLastMessageLoading ? (
+                      <EuiLoadingContent />
+                    ) : (
+                      <EuiPanel paddingSize="l" hasShadow={false} hasBorder={false} color="subdued">
+                        <EuiText className="markdown-output-text" size="s">
+                          {isMarkdownText(message.response) ? (
+                            <MarkdownRender source={message.response} />
+                          ) : (
+                            message.response
+                          )}
+                        </EuiText>
+                      </EuiPanel>
+                    )}
+                  </EuiAccordion>
                 </EuiPanel>
                 <EuiSpacer size="s" />
               </>
             );
           })}
+        {!!executorMessages && executorMessages.length > 0 && <EuiSpacer size="s" />}
       </>
     );
   };
