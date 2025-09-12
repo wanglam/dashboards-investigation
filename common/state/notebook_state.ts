@@ -9,6 +9,13 @@ import { ObservableState } from './observable_state';
 import { ParagraphState } from './paragraph_state';
 import { TopContextState } from './top_context_state';
 
+export interface InvestigationHypothesis {
+  id: string;
+  description: string;
+  likelihood: number;
+  supportFindings: string[];
+}
+
 export interface NotebookStateValue {
   paragraphs: Array<ParagraphState<unknown>>;
   id: string;
@@ -20,6 +27,7 @@ export interface NotebookStateValue {
   path: string;
   vizPrefix: string;
   owner?: string;
+  hypotheses?: InvestigationHypothesis[];
 }
 
 export class NotebookState extends ObservableState<NotebookStateValue> {

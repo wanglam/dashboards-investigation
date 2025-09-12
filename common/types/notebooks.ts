@@ -143,3 +143,25 @@ export interface DeepResearchInputParameters {
   prompts?: { systemPrompt?: string; executorSystemPrompt?: string };
   agentId?: string;
 }
+
+export interface PERAgentHypothesisFinding {
+  id: string;
+  description: string;
+  importance: number;
+  evidence: string;
+}
+
+export interface PERAgentHypothesisItem {
+  id: string;
+  description: string;
+  likelihood: number;
+  supporting_findings: string[];
+}
+
+export interface PERAgentInvestigationResponse {
+  summary: string;
+  findings: PERAgentHypothesisFinding[];
+  hypotheses: PERAgentHypothesisItem[];
+  reasoning: string;
+  confidence_rating: number;
+}

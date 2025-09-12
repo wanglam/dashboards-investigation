@@ -46,6 +46,7 @@ import { useParagraphs } from '../../../hooks/use_paragraphs';
 import { isValidUUID } from './helpers/notebooks_parser';
 import { useNotebook } from '../../../hooks/use_notebook';
 import { usePrecheck } from '../../../hooks/use_precheck';
+import { useHypothesisGenerator } from '../../../hooks/use_hypothesis_generator';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { AlertPanel } from './alert_panel';
 import { GlobalPanel } from './global_panel';
@@ -80,6 +81,8 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
   const { createParagraph, deleteParagraph } = useParagraphs();
   const { loadNotebook: loadNotebookHook } = useNotebook();
   const { start, setInitialGoal } = usePrecheck();
+
+  useHypothesisGenerator();
 
   const notebookContext = useContext(NotebookReactContext);
   const { source } = useObservable(
