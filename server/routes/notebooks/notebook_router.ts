@@ -154,6 +154,61 @@ export function registerNoteRoute(router: IRouter, auth: HttpAuth) {
     }
   );
 
+  router.put(
+    {
+      path: `${NOTEBOOKS_API_PREFIX}/note/updateInvestigationResult`,
+      validate: {
+        body: schema.object({
+          notebookId: schema.string(),
+          investigationResult: schema.object({
+            summary: schema.maybe(schema.string()),
+            hypotheses: schema.arrayOf(
+              schema.object({
+                description: schema.string(),
+                likelihood: schema.number(),
+                supportingFindingParagraphIds: schema.arrayOf(schema.string()),
+              })
+            ),
+            reasoning: schema.string(),
+            confidenceRating: schema.maybe(schema.number()),
+          }),
+        }),
+      },
+    },
+    async (
+      context,
+      request,
+      response
+    ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+      const opensearchNotebooksClient: SavedObjectsClientContract =
+        context.core.savedObjects.client;
+      try {
+        const noteObject = {
+          investigationResult: request.body.investigationResult,
+          dateModified: new Date().toISOString(),
+        };
+        const updateResponse = await opensearchNotebooksClient.update(
+          NOTEBOOK_SAVED_OBJECT,
+          request.body.notebookId,
+          {
+            savedNotebook: noteObject,
+          }
+        );
+        return response.ok({
+          body: updateResponse,
+        });
+      } catch (error) {
+        return response.custom({
+          statusCode: error.statusCode || 500,
+          body: {
+            message: `Failed to update investigation result: ${error.message}`,
+            error: error.name,
+          },
+        });
+      }
+    }
+  );
+
   router.get(
     {
       path: `${NOTEBOOKS_API_PREFIX}/note/savedNotebook/{noteId}`,

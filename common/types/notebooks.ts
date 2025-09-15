@@ -82,6 +82,19 @@ export interface ParagraphBackendType<TOutputResult, TInputParameters = unknown>
   dataSourceMDSId?: string;
 }
 
+export interface HypothesisItem {
+  description: string;
+  likelihood: number;
+  supportingFindingParagraphIds: string[];
+}
+
+export interface InvestigationResult {
+  summary?: string;
+  hypotheses: HypothesisItem[];
+  confidenceRating?: number;
+  reasoning?: string;
+}
+
 export type ParagraphInputType<TParameters = unknown> = ParagraphBackendType<TParameters>['input'];
 
 export interface NotebookBackendType {
@@ -93,6 +106,7 @@ export interface NotebookBackendType {
   path: string;
   vizPrefix?: string;
   owner?: string;
+  investigationResult: InvestigationResult;
 }
 
 export interface SummaryDataItem {
@@ -142,4 +156,26 @@ export interface DeepResearchInputParameters {
   PERAgentContext?: string;
   prompts?: { systemPrompt?: string; executorSystemPrompt?: string };
   agentId?: string;
+}
+
+export interface PERAgentHypothesisFinding {
+  id: string;
+  description: string;
+  importance: number;
+  evidence: string;
+}
+
+export interface PERAgentHypothesisItem {
+  id: string;
+  description: string;
+  likelihood: number;
+  supporting_findings: string[];
+}
+
+export interface PERAgentInvestigationResponse {
+  summary: string;
+  findings: PERAgentHypothesisFinding[];
+  hypotheses: PERAgentHypothesisItem[];
+  reasoning: string;
+  confidence_rating: number;
 }

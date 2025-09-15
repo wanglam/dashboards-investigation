@@ -22,10 +22,12 @@ import {
 } from '@elastic/eui';
 import CSS from 'csstype';
 import React, { useState, useEffect, useRef } from 'react';
-
 import { useContext } from 'react';
 import { useObservable } from 'react-use';
 import { useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
+import { parse } from 'query-string';
+
 import { NoteBookServices } from 'public/types';
 import { ParagraphState } from '../../../../common/state/paragraph_state';
 import {
@@ -46,6 +48,7 @@ import { useParagraphs } from '../../../hooks/use_paragraphs';
 import { isValidUUID } from './helpers/notebooks_parser';
 import { useNotebook } from '../../../hooks/use_notebook';
 import { usePrecheck } from '../../../hooks/use_precheck';
+import { useAutomaticInvestigation } from '../../../hooks/use_automatic_investigation';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { AlertPanel } from './alert_panel';
 import { GlobalPanel } from './global_panel';
@@ -75,11 +78,17 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
     services: { http, notifications },
   } = useOpenSearchDashboards<NoteBookServices>();
 
+  const { search } = useLocation();
+  const query = parse(search);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalLayout, setModalLayout] = useState<React.ReactNode>(<EuiOverlayMask />);
   const { createParagraph, deleteParagraph } = useParagraphs();
   const { loadNotebook: loadNotebookHook } = useNotebook();
   const { start, setInitialGoal } = usePrecheck();
+
+  useAutomaticInvestigation({
+    question: typeof query.question === 'string' ? query.question : '',
+  });
 
   const notebookContext = useContext(NotebookReactContext);
   const { source } = useObservable(
@@ -190,6 +199,7 @@ export function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
           vizPrefix: res.vizPrefix,
           paragraphs: res.paragraphs.map((paragraph) => new ParagraphState<unknown>(paragraph)),
           owner: res.owner,
+          investigationResult: res.investigationResult,
         });
         await setInitialGoal({
           context: notebookContext.state.value.context.value,

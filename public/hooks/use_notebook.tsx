@@ -8,6 +8,7 @@ import { NoteBookServices } from 'public/types';
 import {
   IndexInsight,
   IndexInsightContent,
+  InvestigationResult,
   NotebookBackendType,
   NotebookContext,
 } from 'common/types/notebooks';
@@ -189,8 +190,33 @@ export const useNotebook = () => {
     return promise;
   }, [context.state, http, showParagraphRunning, fetchIndexInsights]);
 
+  const updateInvestigationResult = useCallback(
+    async (investigationResult: InvestigationResult) => {
+      const { id: openedNoteId } = context.state.value;
+      try {
+        const response = await http.put(`${NOTEBOOKS_API_PREFIX}/note/updateInvestigationResult`, {
+          body: JSON.stringify({
+            notebookId: openedNoteId,
+            investigationResult,
+          }),
+        });
+
+        context.state.updateValue({
+          investigationResult,
+        });
+
+        return response;
+      } catch (error) {
+        console.error('Error updating notebook investigation result:', error);
+        throw error;
+      }
+    },
+    [context.state, http]
+  );
+
   return {
     loadNotebook,
     updateNotebookContext,
+    updateInvestigationResult,
   };
 };

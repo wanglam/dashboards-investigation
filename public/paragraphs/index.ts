@@ -35,5 +35,5 @@ export const paragraphRegistry = [
     item: VisualizationParagraphItem,
   },
   { types: ['ppl', 'sql'], item: PPLParagraphItem },
-  { types: ['md'], item: MarkdownParagraphItem },
+  { types: ['md', 'MARKDOWN'], item: MarkdownParagraphItem },
 ];
