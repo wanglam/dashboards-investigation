@@ -36,7 +36,7 @@ export const useParagraphs = () => {
         input: props.input,
         paragraphIndex: props.index,
         dataSourceMDSId: props.dataSourceMDSId,
-        aiGenerated: true,
+        aiGenerated: !!props.aiGenerated,
       };
 
       return http

@@ -31,7 +31,7 @@ interface HypothesesPanelProps {
   question?: string;
   isInvestigating: boolean;
   doInvestigate: (props: { investigationQuestion: string; hypothesisIndex?: number }) => void;
-  addNewFinding: Function;
+  addNewFinding: (newFinding: { hypothesisIndex: number; text: string }) => Promise<void>;
 }
 
 export const HypothesesPanel: React.FC<HypothesesPanelProps> = ({
