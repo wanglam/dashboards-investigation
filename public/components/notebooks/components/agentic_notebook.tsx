@@ -58,7 +58,6 @@ function NotebookComponent({ showPageHeader }: NotebookComponentProps) {
   const {
     services: {
       notifications,
-      application,
       findingService,
       chrome,
       assistantDashboards,
