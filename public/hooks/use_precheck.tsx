@@ -33,6 +33,7 @@ import { useOpenSearchDashboards } from '../../../../src/plugins/opensearch_dash
 import { isDateAppenddablePPL, validatePPLQuery } from '../utils/query';
 import { createDashboardVizObject } from '../utils/visualization';
 import { getClient } from '../services';
+import { supportsLogPatternAnalysis } from '../../common/utils/shared';
 
 export const waitForPrecheckContexts = ({
   paragraphStates,
@@ -131,8 +132,12 @@ export const usePrecheck = () => {
           }
         }
 
-        // Collect log pattern paragraph (only if PPL is valid)
-        if (!logPatternParaExists && isPPLValid) {
+        // Collect log pattern paragraph (only if PPL is valid and version supports it)
+        if (
+          !logPatternParaExists &&
+          isPPLValid &&
+          supportsLogPatternAnalysis(state.value.context.value?.dataSourceVersion)
+        ) {
           const resContext = res.context as NotebookContext;
           if (resContext?.timeRange && resContext?.index && resContext?.timeField) {
             if (
