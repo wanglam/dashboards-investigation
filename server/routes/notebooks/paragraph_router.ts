@@ -15,9 +15,13 @@ import { NOTEBOOKS_API_PREFIX } from '../../../common/constants/notebooks';
 import { NOTEBOOK_SAVED_OBJECT } from '../../../common/types/observability_saved_object_attributes';
 import {
   createParagraphs,
+  batchCreateParagraphs,
+  batchRunParagraphs,
   deleteParagraphs,
+  batchDeleteParagraphs,
   updateFetchParagraph,
   updateRunFetchParagraph,
+  batchSaveParagraphs,
 } from '../../adaptors/notebooks/saved_objects_paragraphs_router';
 
 const paragraphInputValidation = schema.object({
@@ -30,6 +34,7 @@ const paragraphOutputValidation = schema.arrayOf(
   schema.object({
     outputType: schema.string(),
     result: schema.oneOf([schema.string(), schema.object({}, { unknowns: 'allow' })]),
+    execution_time: schema.maybe(schema.string()),
   })
 );
 
@@ -43,6 +48,7 @@ export function registerParaRoute(router: IRouter) {
           paragraphIndex: schema.number(),
           input: paragraphInputValidation,
           dataSourceMDSId: schema.maybe(schema.string()),
+          aiGenerated: schema.maybe(schema.boolean()),
         }),
       },
     },
@@ -117,8 +123,7 @@ export function registerParaRoute(router: IRouter) {
       try {
         const runResponse = await updateRunFetchParagraph(
           request.body,
-          context.core.savedObjects.client,
-          context
+          context.core.savedObjects.client
         );
         return response.ok({
           body: runResponse,
@@ -162,6 +167,150 @@ export function registerParaRoute(router: IRouter) {
         return response.ok({
           body: saveResponse,
         });
+      } catch (error) {
+        return response.custom({
+          statusCode: error.statusCode || 500,
+          body: error.message,
+        });
+      }
+    }
+  );
+  router.delete(
+    {
+      path: `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraphs`,
+      validate: {
+        body: schema.object({
+          noteId: schema.string(),
+          paragraphIds: schema.arrayOf(schema.string()),
+        }),
+      },
+    },
+    async (
+      context,
+      request,
+      response
+    ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+      try {
+        const deleteResponse = await batchDeleteParagraphs(
+          request.body,
+          context.core.savedObjects.client
+        );
+        return response.ok({
+          body: deleteResponse,
+        });
+      } catch (error) {
+        return response.custom({
+          statusCode: error.statusCode || 500,
+          body: error.message,
+        });
+      }
+    }
+  );
+  router.post(
+    {
+      path: `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraphs/batch`,
+      validate: {
+        body: schema.object({
+          noteId: schema.string(),
+          startIndex: schema.number(),
+          paragraphs: schema.arrayOf(
+            schema.object({
+              input: paragraphInputValidation,
+              dataSourceMDSId: schema.maybe(schema.string()),
+              aiGenerated: schema.maybe(schema.boolean()),
+            })
+          ),
+        }),
+      },
+    },
+    async (
+      context,
+      request,
+      response
+    ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+      try {
+        const batchResponse = await batchCreateParagraphs(
+          request.body,
+          context.core.savedObjects.client
+        );
+        return response.ok({ body: batchResponse });
+      } catch (error) {
+        return response.custom({
+          statusCode: error.statusCode || 500,
+          body: error.message,
+        });
+      }
+    }
+  );
+  router.post(
+    {
+      path: `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraphs/batch/run`,
+      validate: {
+        body: schema.object({
+          noteId: schema.string(),
+          paragraphs: schema.arrayOf(
+            schema.object({
+              id: schema.string(),
+              input: paragraphInputValidation,
+              dataSourceMDSId: schema.maybe(schema.string()),
+            })
+          ),
+        }),
+      },
+    },
+    async (
+      context,
+      request,
+      response
+    ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+      try {
+        const runResponse = await batchRunParagraphs(
+          request.body,
+          context.core.savedObjects.client
+        );
+        return response.ok({ body: runResponse });
+      } catch (error) {
+        return response.custom({
+          statusCode: error.statusCode || 500,
+          body: error.message,
+        });
+      }
+    }
+  );
+  router.put(
+    {
+      path: `${NOTEBOOKS_API_PREFIX}/savedNotebook/paragraphs/batch`,
+      validate: {
+        body: schema.object({
+          noteId: schema.string(),
+          paragraphs: schema.arrayOf(
+            schema.object({
+              paragraphId: schema.string(),
+              input: paragraphInputValidation,
+              dataSourceMDSId: schema.maybe(schema.string()),
+              output: schema.maybe(paragraphOutputValidation),
+            })
+          ),
+        }),
+      },
+    },
+    async (
+      context,
+      request,
+      response
+    ): Promise<IOpenSearchDashboardsResponse<any | ResponseError>> => {
+      try {
+        const saveResponse = await batchSaveParagraphs(
+          {
+            ...request.body,
+            paragraphs: request.body.paragraphs.map((p) => ({
+              ...p,
+              output: p.output ? [p.output[0]] : undefined,
+            })),
+          },
+          context.core.savedObjects.client
+        );
+        return response.ok({ body: saveResponse });
       } catch (error) {
         return response.custom({
           statusCode: error.statusCode || 500,

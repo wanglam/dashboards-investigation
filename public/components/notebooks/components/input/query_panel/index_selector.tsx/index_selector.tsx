@@ -7,7 +7,6 @@ import React, { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import {
   EuiButtonEmpty,
   EuiHighlight,
-  EuiIcon,
   EuiPopover,
   EuiSelectable,
   EuiSelectableOption,
@@ -22,6 +21,15 @@ import { QueryState } from '../../types';
 
 import './index_selector.scss';
 import { Field } from '../../../../../../../../../src/plugins/dashboard/public/types';
+import { callOpenSearchCluster } from '../../../../../../plugin_helpers/plugin_proxy_call';
+import { generateDefaultQuery } from '../../../../../../../public/utils/query';
+
+const DEFAULT_QUERY_STATE = { value: '', query: '', isPromptEditorMode: false };
+
+const INITAL_INDEX_SELECTION = {
+  selectedIndex: undefined,
+  selectedTimeField: undefined,
+};
 
 interface IndexSelectorOption {
   checked?: 'on' | 'off';
@@ -29,9 +37,10 @@ interface IndexSelectorOption {
   label?: string;
 }
 
-export const IndexSelector: React.FC = () => {
-  const { dataSourceId, handleInputChange, inputValue } = useInputContext();
-  const { noDatePicker, selectedIndex } = (inputValue as QueryState) || {};
+export const IndexSelector: React.FC<{ dataSourceId: string | undefined }> = ({ dataSourceId }) => {
+  const { handleInputChange, inputValue, isDisabled } = useInputContext();
+  const { value, noDatePicker, selectedIndex, queryLanguage, isPromptEditorMode, timeRange } =
+    (inputValue as QueryState) || {};
   const {
     services: {
       http,
@@ -42,12 +51,11 @@ export const IndexSelector: React.FC = () => {
   const [currentSelection, setCurrentSelection] = useState<{
     selectedIndex: IndexSelectorOption | undefined;
     selectedTimeField: IndexSelectorOption | undefined;
-  }>({
-    selectedIndex: undefined,
-    selectedTimeField: undefined,
-  });
+  }>(INITAL_INDEX_SELECTION);
 
   const tempSelectedIndexRef = useRef<IndexSelectorOption | undefined>(undefined);
+  const isFirstRender = useRef(true);
+  const previousDataSouce = useRef<string | undefined>(undefined);
 
   const [uiState, setUiState] = useState({
     isOpen: false,
@@ -62,18 +70,45 @@ export const IndexSelector: React.FC = () => {
   });
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (dataSourceId !== undefined) {
+      setCurrentSelection(INITAL_INDEX_SELECTION);
+      setUiState({
+        isOpen: false,
+        stage: 'index',
+        isLoading: false,
+      });
+      handleInputChange({
+        ...DEFAULT_QUERY_STATE,
+        selectedIndex: {
+          title: '',
+          fields: [],
+        },
+      });
+    }
+  }, [dataSourceId, handleInputChange]);
+
+  useEffect(() => {
     // TODO: consider to move the check for indices to notebook context
-    if (!uiState.isOpen || indicesData.indices.length > 0) return;
+    if (!uiState.isOpen) return;
+
+    // Prevent fetching when close and reopen the popover without changing the data source
+    if (previousDataSouce.current === dataSourceId && indicesData.indices.length > 0) return;
 
     const fetchIndices = async () => {
       setUiState((prev) => ({ ...prev, isLoading: true }));
       try {
-        const res = await http.post('/api/console/proxy', {
-          query: {
+        const res = await callOpenSearchCluster({
+          http,
+          request: {
             path: '/_cat/indices?format=json',
             method: 'GET',
-            dataSourceId,
           },
+          dataSourceId,
         });
         setIndicesData((prev) => ({ ...prev, indices: res }));
       } catch (err) {
@@ -83,25 +118,21 @@ export const IndexSelector: React.FC = () => {
       }
     };
     fetchIndices();
+    previousDataSouce.current = dataSourceId;
   }, [uiState.isOpen, indicesData.indices.length, dataSourceId, http]);
 
   useEffect(() => {
-    const initializeFromInput = async () => {
-      // Populate selected index and time field label from input state
-      if (!currentSelection.selectedIndex && !isEmpty(selectedIndex?.title)) {
-        const indexTitle = selectedIndex.title;
-        const timeField = selectedIndex.timeField;
-
-        setCurrentSelection((prev) => ({
-          ...prev,
-          selectedIndex: { label: indexTitle },
-          selectedTimeField: { label: timeField },
-        }));
-      }
-    };
-
-    initializeFromInput();
-  }, [selectedIndex, currentSelection.selectedIndex]);
+    // Populate selected index and time field label from input state
+    if (!isEmpty(selectedIndex?.title)) {
+      setCurrentSelection((prev) => ({
+        ...prev,
+        selectedIndex: { label: selectedIndex.title },
+        selectedTimeField: { label: selectedIndex.timeField },
+      }));
+    } else {
+      setCurrentSelection(INITAL_INDEX_SELECTION);
+    }
+  }, [selectedIndex]);
 
   const options = useMemo(() => {
     return indicesData.indices.map(({ index, uuid }) => ({ label: index, key: uuid }));
@@ -113,11 +144,12 @@ export const IndexSelector: React.FC = () => {
   );
 
   const closePopover = useCallback(() => {
-    setUiState((prev) => ({ ...prev, isOpen: false }));
     if (uiState.stage === 'timeField' && !currentSelection.selectedTimeField) {
       tempSelectedIndexRef.current = undefined;
-      setUiState((prev) => ({ ...prev, stage: 'index' }));
+      setUiState((prev) => ({ ...prev, isOpen: false, stage: 'index' }));
       setIndicesData((prev) => ({ ...prev, timeFields: [] }));
+    } else {
+      setUiState((prev) => ({ ...prev, isOpen: false }));
     }
   }, [uiState.stage, currentSelection.selectedTimeField]);
 
@@ -144,68 +176,112 @@ export const IndexSelector: React.FC = () => {
     [indexPatterns, dataSourceId]
   );
 
+  const createDefaultQuery = useCallback(
+    (indexName: string) => {
+      if (
+        !isPromptEditorMode &&
+        ((currentSelection.selectedIndex && currentSelection.selectedIndex?.label !== indexName) ||
+          isEmpty(value))
+      ) {
+        /**
+         * Only insert default query if the current query editor mode is not t2ppl AND
+         * 1) The user changed to a different index OR
+         * 2) No index is selected previously
+         *
+         * For 2), we Ddn't reset current query input if previously no index is selected.
+         * This is to ensure for legacy notebook, the user don't have to re-enter the query
+         *  after select the correct index for an existing query.
+         */
+        return { value: generateDefaultQuery(indexName, queryLanguage) };
+      }
+      return {};
+    },
+    [value, currentSelection.selectedIndex, queryLanguage, isPromptEditorMode]
+  );
+
   const handleIndexChange = useCallback(
     async (newOptions: EuiSelectableOption[]) => {
       const selected = newOptions.find((option) => option.checked === 'on');
-      tempSelectedIndexRef.current = selected;
+      if (selected) {
+        tempSelectedIndexRef.current = selected;
 
-      if (noDatePicker) {
-        // Skip time field selection and directly set the index
-        setCurrentSelection((prev) => ({ ...prev, selectedIndex: selected }));
-        setUiState((prev) => ({ ...prev, isOpen: false }));
+        if (noDatePicker || queryLanguage === 'SQL') {
+          // Skip time field selection and directly set the index
+          setCurrentSelection((prev) => ({ ...prev, selectedIndex: selected }));
+          setUiState((prev) => ({ ...prev, isOpen: false }));
 
-        try {
-          const res = await indexPatterns.getFieldsForWildcard({
-            pattern: selected?.label,
-            dataSourceId,
-          });
+          try {
+            const res = await indexPatterns.getFieldsForWildcard({
+              pattern: selected.label,
+              dataSourceId,
+            });
 
-          handleInputChange({
-            selectedIndex: {
-              title: selected?.label!,
-              fields: res,
-              timeField: undefined,
-            },
-          });
-        } catch (err) {
-          console.log('error', err);
+            handleInputChange({
+              ...createDefaultQuery(selected.label),
+              selectedIndex: {
+                title: selected.label!,
+                fields: res,
+                timeField: undefined,
+              },
+            });
+          } catch (err) {
+            console.log('error', err);
+          }
+        } else {
+          fetchTimeFields(selected?.label);
         }
-      } else {
-        fetchTimeFields(selected?.label);
       }
     },
-    [noDatePicker, indexPatterns, dataSourceId, handleInputChange, fetchTimeFields]
+    [
+      noDatePicker,
+      indexPatterns,
+      queryLanguage,
+      dataSourceId,
+      handleInputChange,
+      fetchTimeFields,
+      createDefaultQuery,
+    ]
   );
 
   const handleTimeFieldChange = useCallback(
     (newOptions: EuiSelectableOption[]) => {
-      const selected = newOptions.find((option) => option.checked === 'on');
-      setCurrentSelection((prev) => ({
-        ...prev,
-        selectedTimeField: selected,
-        selectedIndex: tempSelectedIndexRef.current,
-      }));
-      setUiState((prev) => ({ ...prev, isOpen: false }));
+      const selectedTimeField = newOptions.find((option) => option.checked === 'on');
+      const selectedIndexLabel = tempSelectedIndexRef.current?.label;
 
-      const indexData = {
-        title: tempSelectedIndexRef.current?.label!,
-        fields: indicesData.allFields,
-        timeField: selected?.label,
-      };
+      if (selectedTimeField && selectedIndexLabel) {
+        setCurrentSelection((prev) => ({
+          ...prev,
+          selectedTimeField,
+          selectedIndex: tempSelectedIndexRef.current,
+        }));
 
-      handleInputChange({ selectedIndex: indexData });
+        const indexData = {
+          title: selectedIndexLabel,
+          fields: indicesData.allFields,
+          timeField: selectedTimeField.label,
+        };
+
+        setUiState((prev) => ({ ...prev, isOpen: false, stage: 'index' }));
+        tempSelectedIndexRef.current = undefined;
+
+        handleInputChange({
+          ...createDefaultQuery(selectedIndexLabel),
+          ...(isEmpty(timeRange) ? { timeRange: { from: 'now-15m', to: 'now' } } : {}),
+          selectedIndex: indexData,
+        });
+      }
     },
-    [indicesData.allFields, handleInputChange]
+    [indicesData.allFields, timeRange, handleInputChange, createDefaultQuery]
   );
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setUiState((prev) => ({ ...prev, stage: 'index' }));
     setIndicesData((prev) => ({ ...prev, timeFields: [] }));
     tempSelectedIndexRef.current = undefined;
-  };
+  }, []);
 
   const getButtonText = () => {
-    if (noDatePicker) {
+    if (noDatePicker || queryLanguage === 'SQL') {
       return currentSelection.selectedIndex?.label || 'Select an index';
     }
     if (currentSelection.selectedTimeField) {
@@ -215,6 +291,20 @@ export const IndexSelector: React.FC = () => {
     }
     return uiState.stage === 'index' ? 'Select an index' : 'Select a time field';
   };
+
+  const commonSelectableProps = useMemo(
+    () => ({
+      className: 'notebookIndexSelector__selectable',
+      singleSelection: 'always' as const,
+      renderOption: (option: EuiSelectableOption, searchValue: string) => (
+        <EuiHighlight search={searchValue}>{option.label}</EuiHighlight>
+      ),
+      listProps: { showIcons: false, rowHeight: 40 },
+      searchable: true as const,
+      isLoading: uiState.isLoading,
+    }),
+    [uiState.isLoading]
+  );
 
   return (
     <EuiPopover
@@ -228,8 +318,8 @@ export const IndexSelector: React.FC = () => {
           size="xs"
           textProps={{ className: 'notebookIndexSelector__textWrapper' }}
           onClick={togglePopover}
+          isDisabled={isDisabled}
         >
-          <EuiIcon type="database" size="s" />
           <EuiText size="xs" className="notebookIndexSelector__text">
             {getButtonText()}
           </EuiText>
@@ -243,18 +333,11 @@ export const IndexSelector: React.FC = () => {
     >
       {uiState.stage === 'index' || noDatePicker ? (
         <EuiSelectable
-          className="notebookIndexSelector__selectable"
+          {...commonSelectableProps}
           data-test-subj="notebookIndexSelectorSelectable"
           options={options}
-          singleSelection="always"
-          searchable={true}
           onChange={handleIndexChange}
-          renderOption={(option, searchValue) => (
-            <EuiHighlight search={searchValue}>{option.label}</EuiHighlight>
-          )}
-          listProps={{ showIcons: false, rowHeight: 40 }}
           searchProps={{ placeholder: 'Search indices', compressed: true }}
-          isLoading={uiState.isLoading}
         >
           {(list, search) => (
             <>
@@ -265,18 +348,11 @@ export const IndexSelector: React.FC = () => {
         </EuiSelectable>
       ) : (
         <EuiSelectable
-          className="notebookIndexSelector__selectable"
+          {...commonSelectableProps}
           data-test-subj="timeFieldSelectSelectable"
           options={indicesData.timeFields}
-          singleSelection="always"
           onChange={handleTimeFieldChange}
-          renderOption={(option, searchValue) => (
-            <EuiHighlight search={searchValue}>{option.label}</EuiHighlight>
-          )}
-          listProps={{ showIcons: false, rowHeight: 40 }}
-          searchable={true}
           searchProps={{ placeholder: 'Search time fields', compressed: true }}
-          isLoading={uiState.isLoading}
         >
           {(list, search) => (
             <>

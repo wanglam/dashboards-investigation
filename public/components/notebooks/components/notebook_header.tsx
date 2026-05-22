@@ -22,17 +22,19 @@ import { useHistory } from 'react-router-dom';
 import moment from 'moment';
 import { useObservable } from 'react-use';
 import { i18n } from '@osd/i18n';
-import { isEmpty } from 'lodash';
 
 import type { NoteBookServices } from 'public/types';
 
-import { CREATE_NOTE_MESSAGE, NOTEBOOKS_API_PREFIX } from '../../../../common/constants/notebooks';
+import {
+  CREATE_NOTE_MESSAGE,
+  NOTEBOOK_NAME_MAX_LENGTH,
+  NOTEBOOKS_API_PREFIX,
+} from '../../../../common/constants/notebooks';
 import { investigationNotebookID, UI_DATE_FORMAT } from '../../../../common/constants/shared';
 import { useOpenSearchDashboards } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { NotebookReactContext } from '../context_provider/context_provider';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 import { HeaderVariant } from '../../../../../../src/core/public';
-
 import { GenerateReportLoadingModal } from './helpers/custom_modals/reporting_loading_modal';
 import { DeleteNotebookModal, getCustomModal } from './helpers/modal_containers';
 import {
@@ -40,10 +42,9 @@ import {
   contextMenuViewReports,
   generateInContextReport,
 } from './helpers/reporting_context_menu_helper';
-import { ToggleSystemPromptSettingModal } from './helpers/custom_modals/toggle_system_prompt_setting_modal';
 import { TopNavMenuIconData } from '../../../../../../src/plugins/navigation/public';
-import { SystemPromptSettingModal } from './helpers/custom_modals/system_prompt_setting_modal';
 import { NotebookDataSourceSelector } from './data_source_selector/notebook_data_source_selector';
+import { NotebookType } from '../../../../common/types/notebooks';
 
 export const NotebookHeader = ({
   loadNotebook,
@@ -78,12 +79,11 @@ export const NotebookHeader = ({
     isLoading,
   } = useObservable(notebookContext.state.getValue$(), notebookContext.state.value);
   const contextValue = useObservable(context.getValue$());
-  const { dataSourceId } = contextValue || {};
+  const { dataSourceId, notebookType } = contextValue || {};
 
   const [isReportingPluginInstalled, setIsReportingPluginInstalled] = useState(false);
   const [isReportingActionsPopoverOpen, setIsReportingActionsPopoverOpen] = useState(false);
   const [isReportingLoadingModalOpen, setIsReportingLoadingModalOpen] = useState(false);
-  const [isSystemPromptsModalOpen, setIsSystemPromptsModalOpen] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalLayout, setModalLayout] = useState<React.ReactNode>(<EuiOverlayMask />);
 
@@ -98,7 +98,7 @@ export const NotebookHeader = ({
   // Renames an existing notebook
   const renameNotebook = useCallback(
     async (editedNoteName: string, editedNoteID: string): Promise<any> => {
-      if (editedNoteName.length >= 50 || editedNoteName.length === 0) {
+      if (editedNoteName.length > NOTEBOOK_NAME_MAX_LENGTH || editedNoteName.length === 0) {
         notifications.toasts.addDanger('Invalid notebook name');
         return;
       }
@@ -131,7 +131,7 @@ export const NotebookHeader = ({
         (newName: string) => {
           renameNotebook(newName, openedNoteId).then((res) => {
             setIsModalVisible(false);
-            window.location.assign(`#/${res.id}`);
+            window.location.assign(`#/agentic/${res.id}`);
             setTimeout(() => {
               loadNotebook();
             }, 300);
@@ -151,7 +151,7 @@ export const NotebookHeader = ({
   // Clones an existing notebook, return new notebook's id
   const cloneNotebook = useCallback(
     async (clonedNoteName: string, clonedNoteID: string): Promise<string> => {
-      if (clonedNoteName.length >= 50 || clonedNoteName.length === 0) {
+      if (clonedNoteName.length > NOTEBOOK_NAME_MAX_LENGTH || clonedNoteName.length === 0) {
         notifications.toasts.addDanger('Invalid notebook name');
         return Promise.reject();
       }
@@ -231,7 +231,7 @@ export const NotebookHeader = ({
           await deleteSingleNotebook(openedNoteId, toastMessage);
           setIsModalVisible(false);
           setTimeout(() => {
-            history.push('.');
+            history.push(notebookType === NotebookType.AGENTIC ? '..' : '.');
           }, 1000);
         }}
         onCancel={() => setIsModalVisible(false)}
@@ -240,7 +240,7 @@ export const NotebookHeader = ({
       />
     );
     setIsModalVisible(true);
-  }, [path, deleteSingleNotebook, openedNoteId, history]);
+  }, [path, deleteSingleNotebook, openedNoteId, notebookType, history]);
 
   const reportingActionPanels: EuiContextMenuPanelDescriptor[] = useMemo(
     () => [
@@ -339,9 +339,6 @@ export const NotebookHeader = ({
       <EuiFlexGroup gutterSize="s">
         {isSavedObjectNotebook ? (
           <>
-            <EuiFlexItem grow={false}>
-              <ToggleSystemPromptSettingModal />
-            </EuiFlexItem>
             <EuiFlexItem grow={false}>
               <EuiToolTip
                 content={
@@ -508,18 +505,6 @@ export const NotebookHeader = ({
 
   const topNavMenuConfig = useMemo(
     () => [
-      {
-        tooltip: i18n.translate('notebook.systemPromptSettingButton.tooltip', {
-          defaultMessage: 'Edit system prompt',
-        }),
-        ariaLabel: i18n.translate('notebook.systemPromptSettingButton.tooltip', {
-          defaultMessage: 'Edit system prompt',
-        }),
-        testId: 'notebook-system-prompt-icon',
-        run: () => setIsSystemPromptsModalOpen(true),
-        iconType: 'setting',
-        controlType: 'icon',
-      } as TopNavMenuIconData,
       ...(isSavedObjectNotebook
         ? [
             {
@@ -597,15 +582,20 @@ export const NotebookHeader = ({
               />
               <HeaderControl
                 controls={[
+                  ...(notebookType === NotebookType.AGENTIC
+                    ? [
+                        {
+                          renderComponent: (
+                            <NotebookDataSourceSelector
+                              dataSourceId={dataSourceId}
+                              isNotebookLoading={isLoading}
+                            />
+                          ),
+                        },
+                      ]
+                    : []),
                   {
-                    renderComponent: (
-                      <NotebookDataSourceSelector
-                        dataSourceId={dataSourceId}
-                        isNotebookLoading={isLoading}
-                      />
-                    ),
-                  },
-                  {
+                    className: 'notebookLastUpdatedLabel',
                     text: i18n.translate('notebook.header.lastUpdated', {
                       defaultMessage: 'Last updated: {time}',
                       values: {
@@ -654,10 +644,11 @@ export const NotebookHeader = ({
       noteActionIcons,
       showReportingContextMenu,
       reportingTopButton,
+      notebookType,
     ]
   );
 
-  if (isEmpty(contextValue) || path === '') {
+  if (path === '') {
     return null;
   }
 
@@ -666,14 +657,6 @@ export const NotebookHeader = ({
       {header}
       {showLoadingModal}
       {isModalVisible && modalLayout}
-      {isSystemPromptsModalOpen && (
-        <SystemPromptSettingModal
-          closeModal={() => {
-            setIsSystemPromptsModalOpen(false);
-          }}
-          dataSourceId={contextValue?.dataSourceId}
-        />
-      )}
     </>
   );
 };

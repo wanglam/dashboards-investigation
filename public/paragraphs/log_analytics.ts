@@ -3,12 +3,110 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import moment from 'moment';
 import { LogPatternAnalysisResult } from '../../common/types/log_pattern';
+import { IndexInsightContent } from '../../common/types/notebooks';
+import { dateFormat } from '../../common/constants/notebooks';
 import { LogPatternContainer } from '../components/notebooks/components/log_analytics/log_pattern_container';
+import { sortPatternMapDifference } from '../components/notebooks/components/log_analytics/components/pattern_difference';
 import { ParagraphRegistryItem } from '../services/paragraph_service';
+import { LogPatternService, LogPatternAnalysisParams } from '../services/requests/log_pattern';
+import { getClient, getNotifications } from '../services';
+import { extractErrorMessage } from '../utils/error';
 
 export const LogPatternParagraphItem: ParagraphRegistryItem<LogPatternAnalysisResult> = {
   ParagraphComponent: LogPatternContainer,
+  runParagraph: async ({ paragraphState, notebookStateValue }) => {
+    const context = notebookStateValue.context.value;
+    const parameters = paragraphState.value.input.parameters as
+      | {
+          index?: string;
+          timeField?: string;
+          insight?: IndexInsightContent;
+        }
+      | undefined;
+
+    // Use paragraph parameters if available, fallback to context
+    const timeField = parameters?.timeField || context.timeField;
+    const index = parameters?.index || context.index;
+    const indexInsight = parameters?.insight || context.indexInsight;
+    const { timeRange, dataSourceId } = context;
+
+    const updateLoadingState = (
+      loading: Partial<{
+        isLoadingLogInsights: boolean;
+        isLoadingPatternMapDifference: boolean;
+        isLoadingLogSequence: boolean;
+      }>,
+      error?: string
+    ) => {
+      paragraphState.updateUIState({
+        logPattern: {
+          ...loading,
+          ...(error && { error }),
+        },
+      });
+    };
+
+    try {
+      if (!timeRange || !timeField || !index) {
+        throw new Error('Missing essential parameters: timeRange, timeField, index');
+      }
+
+      const { selectionFrom, selectionTo, baselineFrom, baselineTo } = timeRange;
+      const hasBaseline = !!(baselineFrom && baselineTo);
+      const hasTraceId = !!indexInsight?.trace_id_field;
+
+      updateLoadingState({
+        isLoadingLogInsights: true,
+        isLoadingPatternMapDifference: hasBaseline,
+        isLoadingLogSequence: hasBaseline && hasTraceId,
+      });
+
+      const params: LogPatternAnalysisParams = {
+        selectionStartTime: moment(selectionFrom).utc().format(dateFormat),
+        selectionEndTime: moment(selectionTo).utc().format(dateFormat),
+        timeField,
+        logMessageField: indexInsight?.log_message_field,
+        indexName: index,
+        dataSourceMDSId: dataSourceId,
+        ...(hasBaseline && {
+          baselineStartTime: moment(baselineFrom).utc().format(dateFormat),
+          baselineEndTime: moment(baselineTo).utc().format(dateFormat),
+        }),
+        ...(hasTraceId && { traceIdField: indexInsight?.trace_id_field }),
+      };
+
+      const logPatternService = new LogPatternService(getClient());
+      const analysisResult = await logPatternService.analyzeLogPatterns(params);
+
+      const result: LogPatternAnalysisResult = {
+        logInsights: analysisResult.logInsights,
+        ...(analysisResult.patternMapDifference && {
+          patternMapDifference: sortPatternMapDifference(analysisResult.patternMapDifference),
+        }),
+        ...(analysisResult.EXCEPTIONAL && { EXCEPTIONAL: analysisResult.EXCEPTIONAL }),
+      };
+
+      paragraphState.updateOutput({ result });
+      updateLoadingState({
+        isLoadingLogInsights: false,
+        isLoadingPatternMapDifference: false,
+        isLoadingLogSequence: false,
+      });
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error, 'Failed to analyze log patterns');
+      updateLoadingState(
+        {
+          isLoadingLogInsights: false,
+          isLoadingPatternMapDifference: false,
+          isLoadingLogSequence: false,
+        },
+        errorMessage
+      );
+      getNotifications().toasts.addDanger(errorMessage);
+    }
+  },
   getContext: async (paragraph) => {
     const { logInsights, patternMapDifference, EXCEPTIONAL } = paragraph?.output?.[0].result! || {};
     const index = paragraph?.input.parameters?.index || '';
@@ -18,37 +116,65 @@ export const LogPatternParagraphItem: ParagraphRegistryItem<LogPatternAnalysisRe
     };
 
     // Generate natural language summary
-    const generateNaturalSummary = () => {
-      const insights = logInsights?.length || 0;
-      const differences = patternMapDifference?.length || 0;
-      const sequences = EXCEPTIONAL ? Object.keys(EXCEPTIONAL).length : 0;
+    const hasBaseline = patternMapDifference && patternMapDifference.length > 0;
+    const hasTraces = EXCEPTIONAL && EXCEPTIONAL.length > 0;
+    // Note: EXCEPTIONAL only exists when baseline is present AND trace_id_field is configured
 
-      let summary = `I performed an initial log pattern analysis on the ${index} index. `;
+    const generateNaturalSummary = () => {
+      const filteredLogInsights = logInsights?.filter((pattern) => !pattern.excluded) || [];
+      const filteredPatternMapDifference =
+        patternMapDifference?.filter((pattern) => !pattern.excluded) || [];
+      const filteredExceptional = EXCEPTIONAL?.filter((sequence) => !sequence.excluded) || [];
+
+      const insights = filteredLogInsights.length;
+      const differences = filteredPatternMapDifference.length;
+      const sequences = filteredExceptional.length;
+
+      const totalErrorCount = filteredLogInsights.reduce((sum, p) => sum + (p.count || 0), 0);
+
+      let summary = `Log pattern analysis completed on index "${index}". `;
 
       if (insights > 0) {
-        summary += `I found ${insights} error patterns that indicate potential issues. `;
-        const topPattern = logInsights[0];
-        summary += `The most frequent error pattern is "${topPattern.pattern}" with ${topPattern.count} occurrences. `;
+        const topPattern = filteredLogInsights[0];
+        const topPatternPct =
+          totalErrorCount > 0 ? ((topPattern.count / totalErrorCount) * 100).toFixed(1) : '0';
+        summary += `Found ${insights} distinct error patterns (${totalErrorCount} total errors). `;
+        summary += `HIGHEST PRIORITY: "${topPattern.pattern}" (${topPattern.count} occurrences, ${topPatternPct}% of all errors). `;
+
+        if (insights > 1) {
+          const secondPattern = filteredLogInsights[1];
+          summary += `Second most frequent: "${secondPattern.pattern}" (${secondPattern.count} occurrences). `;
+        }
       } else {
-        summary += `No significant error patterns were detected. `;
+        summary += `No error patterns detected. `;
       }
 
       if (differences > 0) {
-        summary += `When comparing the current period to the baseline, I identified ${differences} patterns with notable changes in frequency. `;
-        const significantDiffs =
-          patternMapDifference?.filter((p) => Math.abs(p.lift || 0) > 0.1) || [];
-        if (significantDiffs.length > 0) {
-          summary += `${significantDiffs.length} of these show significant increases or decreases that warrant investigation. `;
+        const significantDiffs = filteredPatternMapDifference.filter(
+          (p) => Math.abs(p.lift || 0) > 0.1
+        );
+        const criticalDiffs = filteredPatternMapDifference.filter(
+          (p) => Math.abs(p.lift || 0) > 0.5
+        );
+
+        summary += `Baseline comparison: ${differences} patterns changed. `;
+
+        if (criticalDiffs.length > 0) {
+          const topDiff = criticalDiffs[0];
+          const magnitude = Math.abs(topDiff.lift || 0) > 1 ? 'CRITICAL' : 'significant';
+          const direction = (topDiff.selection || 0) > (topDiff.base || 0) ? 'spike' : 'drop';
+          summary += `${magnitude.toUpperCase()} ${direction}: "${
+            topDiff.pattern
+          }" changed ${percent(Math.abs(topDiff.lift || 0))} (${percent(topDiff.base)} → ${percent(
+            topDiff.selection
+          )}). `;
+        } else if (significantDiffs.length > 0) {
+          summary += `${significantDiffs.length} patterns show notable changes (>10% lift). `;
         }
-      } else {
-        summary += `The log patterns appear consistent with the baseline period. `;
       }
 
       if (sequences > 0) {
-        summary += `I also discovered ${sequences} exceptional trace sequences that deviate from normal patterns. `;
-        summary += `These sequences may indicate complex error scenarios or unusual system behavior. `;
-      } else {
-        summary += `All trace sequences appear to follow normal patterns. `;
+        summary += `Detected ${sequences} exceptional trace sequences indicating anomalous request flows. `;
       }
 
       return summary;
@@ -57,79 +183,132 @@ export const LogPatternParagraphItem: ParagraphRegistryItem<LogPatternAnalysisRe
     const generateDetailedFindings = () => {
       let details = '';
 
-      if (logInsights && logInsights.length > 0) {
-        details += 'Key Error Patterns:\n';
-        logInsights.slice(0, 5).forEach((pattern, i) => {
-          details += `${i + 1}. "${pattern.pattern}" occurred ${pattern.count} times`;
+      const activeLogInsights = logInsights?.filter((pattern) => !pattern.excluded) || [];
+
+      if (activeLogInsights.length > 0) {
+        const totalErrors = activeLogInsights.reduce((sum, p) => sum + (p.count || 0), 0);
+        details += `Error Patterns:\n`;
+        activeLogInsights.slice(0, 5).forEach((pattern, i) => {
+          const pct = ((pattern.count / totalErrors) * 100).toFixed(1);
+          details += `[${i + 1}] Pattern: "${pattern.pattern}"\n`;
+          details += `    Count: ${pattern.count} (${pct}% of errors)\n`;
           if (pattern.sampleLogs?.[0]) {
-            details += ` (example: "${pattern.sampleLogs[0]}")`;
+            const sample =
+              pattern.sampleLogs[0].length > 150
+                ? pattern.sampleLogs[0].substring(0, 150) + '...'
+                : pattern.sampleLogs[0];
+            details += `    Sample: "${sample}"\n`;
           }
-          details += '\n';
         });
         details += '\n';
       }
 
-      if (patternMapDifference && patternMapDifference.length > 0) {
-        details += 'Pattern Changes from Baseline:\n';
-        patternMapDifference.slice(0, 20).forEach((pattern, i) => {
-          const change = (pattern.selection || 0) > (pattern.base || 0) ? 'increased' : 'decreased';
-          details += `${i + 1}. "${pattern.pattern}" ${change} by ${percent(
-            Math.abs(pattern.lift || 0)
-          )} `;
-          details += `(from ${percent(pattern.base)} to ${percent(pattern.selection)})\n`;
+      const activePatternDiff = patternMapDifference?.filter((pattern) => !pattern.excluded) || [];
+
+      if (activePatternDiff.length > 0) {
+        const topChanges = activePatternDiff.slice(0, 10);
+        details += `Pattern Changes:\n`;
+        topChanges.forEach((pattern, i) => {
+          const liftAbs = Math.abs(pattern.lift || 0);
+          const direction = (pattern.selection || 0) > (pattern.base || 0) ? '↑' : '↓';
+          const severity =
+            liftAbs > 1
+              ? '[CRITICAL]'
+              : liftAbs > 0.5
+              ? '[HIGH]'
+              : liftAbs > 0.2
+              ? '[MEDIUM]'
+              : '[LOW]';
+          details += `[${i + 1}] ${severity} "${pattern.pattern}"\n`;
+          details += `    Change: ${direction} ${percent(liftAbs)} (${percent(
+            pattern.base
+          )} → ${percent(pattern.selection)})\n`;
         });
         details += '\n';
       }
 
-      if (EXCEPTIONAL && Object.keys(EXCEPTIONAL).length > 0) {
-        details += 'Exceptional Trace Sequences:\n';
-        Object.entries(EXCEPTIONAL)
-          .slice(0, 5)
-          .forEach(([traceId, sequence], i) => {
-            details += `${i + 1}. Trace ${traceId}: ${sequence}\n`;
-          });
+      const activeExceptional = EXCEPTIONAL?.filter((sequence) => !sequence.excluded) || [];
+
+      if (activeExceptional.length > 0) {
+        details += `Exceptional Traces:\n`;
+        activeExceptional.slice(0, 5).forEach((sequence, i) => {
+          details += `[${i + 1}] Trace: ${sequence.traceId}\n`;
+          details += `    Sequence: ${sequence.sequence}\n`;
+        });
+        details += '\n';
       }
 
       return details;
     };
 
+    const methodologyText = `This step performs ML-powered log pattern analysis on the ${index} index:
+
+1. **Pattern Extraction**: Uses tokenization algorithms to extract common templates from raw log messages by replacing variable values (IDs, timestamps, numbers) with tokens like <token1>, <token2>
+2. **Error Pattern Detection (Log Insights)**: Identifies patterns containing error indicators ("error", "exception", "failed", "timeout", "warning") and ranks by occurrence count${
+      hasBaseline
+        ? '\n3. **Temporal Comparison (Pattern Differences)**: Compares pattern frequencies between baseline and selection periods, calculating lift percentages to detect behavioral changes'
+        : ''
+    }${
+      hasTraces
+        ? '\n' +
+          (hasBaseline ? '4' : '3') +
+          '. **Trace Sequence Analysis (Exceptional Sequences)**: Identifies unusual sequences of log events within single traces that deviate from normal patterns'
+        : ''
+    }`;
+
+    const terminologyText = `- **Log Pattern**: Template extracted from multiple similar log messages (e.g., "Error connecting to <host> on port <port>" represents all connection errors)
+- **Log Insights**: Error-indicating patterns ranked by frequency - these are your primary suspects for issues${
+      hasBaseline
+        ? '\n- **Pattern Differences**: Patterns with significant frequency changes between time periods\n- **Lift**: Percentage change in pattern frequency (positive = increased, negative = decreased)'
+        : ''
+    }${
+      hasTraces
+        ? '\n- **Exceptional Sequences**: Trace-level event chains that differ from normal system behavior'
+        : ''
+    }
+- **Sample Logs**: Actual log message examples showing the pattern in context`;
+
+    const priorityText = hasBaseline
+      ? `**Priority Order**:
+1. Start with [CRITICAL] and [HIGH] severity pattern changes - these indicate acute issues
+2. Investigate highest-count error patterns - these affect the most requests${
+          hasTraces ? '\n3. Examine exceptional traces for complex failure scenarios' : ''
+        }`
+      : `**Priority Order**:
+1. Investigate highest-count error patterns - these affect the most requests${
+          hasTraces ? '\n2. Examine exceptional traces for complex failure scenarios' : ''
+        }`;
+
     return `## Log Pattern Analysis Results
 
-I have performed an automated log pattern analysis on the ${index} index using advanced pattern recognition algorithms. This analysis extracted common templates from raw log data, identified error patterns, compared current patterns against baseline behavior, and detected exceptional trace sequences that deviate from normal system operation.
+### Analysis Methodology
+${methodologyText}
 
-Key Terminology:
-- Log Pattern: A common template found in multiple log messages (e.g., "Error connecting to database" appears in many logs with different details)
-- Log Insights: Patterns that suggest problems - typically containing words like "error", "exception", "failed", or "timeout"
-- Pattern Differences: When a log pattern appears much more or less frequently than usual compared to a previous time period
-- Lift: A percentage showing how much a pattern increased (+) or decreased (-) compared to normal baseline behavior
-- Log Sequence: A chain of related log events that happened for the same request or transaction, tracked by trace ID
-
-OpenSearch Query Strategy:
-Since patterns contain tokens like <token1>, <token2>, use these approaches:
-
-1. Extract Keywords from Patterns: Remove tokens and use meaningful words
-   - Pattern: "Failed to connect to <host> on port <port>"
-   - Query: "Failed to connect" OR "connection failed"
-
-2. Use Pattern Keywords: Focus on static text that indicates the issue
-   - Look for: error types, service names, operation names
-   - Avoid: tokens, timestamps, IDs, variable values
-
-3. Trace ID Queries: Use exceptional sequences to follow error flows
-   - First discover the correct trace field name in your index
-   - Common field names: trace_id, traceId, trace.id, span.trace_id
-   - Query all events for that trace to see the complete sequence
-
-4. Field Discovery: Check your index mapping to find correct field names
-   - Message fields: message, body, log, content, text
-   - Trace fields: trace_id, traceId, trace.id
-   - Time fields: @timestamp, timestamp, time
-
+### Analysis Results
 ${generateNaturalSummary()}
 
-${generateDetailedFindings()}`;
-  },
-  runParagraph: async () => {
-    return;
+${generateDetailedFindings()}
+
+### Key Terminology
+${terminologyText}
+
+### Investigation Guidelines
+**PRIMARY EVIDENCE**: Use these patterns as concrete evidence for root cause analysis.
+
+${priorityText}
+
+**Query Construction**:
+Patterns contain tokens (<token1>, <token2>) representing variable values. To query:
+1. Extract keywords: Remove tokens, use static text (e.g., "Failed to connect to <host>" → "Failed to connect")
+2. Use sample logs: Copy exact phrases for precise queries
+3. Trace queries: Search by trace_id field (common names: trace_id, traceId, trace.id, span.trace_id)
+4. Field discovery: Check index mapping for field names (message, body, log, content for logs)
+
+**Root Cause Analysis**:
+- Quote specific patterns with their metrics (count, lift %) as evidence
+- Correlate pattern changes with deployment times or system events
+- Link multiple related patterns to identify common root causes
+- Reference sample logs to validate hypotheses
+`;
   },
 };

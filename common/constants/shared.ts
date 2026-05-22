@@ -11,11 +11,11 @@ export const EVENT_ANALYTICS = '/event_analytics';
 export const SAVED_OBJECTS = '/saved_objects';
 export const SAVED_QUERY = '/query';
 export const SAVED_VISUALIZATION = '/vis';
-export const CONSOLE_PROXY = '/api/console/proxy';
 export const SECURITY_PLUGIN_ACCOUNT_API = '/api/v1/configuration/account';
 
 // Server route
 export const PPL_ENDPOINT = '/_plugins/_ppl';
+export const PPL_EXPLAIN_ENDPOINT = '/_plugins/_ppl/_explain';
 export const SQL_ENDPOINT = '/_plugins/_sql';
 
 export const investigationNotebookID = 'investigation-notebooks';
@@ -37,3 +37,5 @@ export const OPENSEARCH_DATACONNECTIONS_API = {
 export const SAVED_OBJECT = '/object';
 
 export const observabilityLogsID = 'observability-logs';
+
+export const ENABLE_AI_FEATURES = 'enableAIFeatures';

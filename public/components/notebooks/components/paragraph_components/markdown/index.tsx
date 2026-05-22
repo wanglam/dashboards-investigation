@@ -5,19 +5,20 @@
 
 import React from 'react';
 import {
-  EuiCodeBlock,
   EuiCompressedTextArea,
   EuiFlexGroup,
   EuiFlexItem,
   EuiLoadingContent,
+  EuiMarkdownFormat,
   EuiSmallButton,
   EuiSpacer,
   EuiText,
 } from '@elastic/eui';
-import { useObservable } from 'react-use';
-import MarkdownRender from '@nteract/markdown';
+import { useEffectOnce, useObservable } from 'react-use';
+import { useContext } from 'react';
 import { ParagraphState } from '../../../../../../common/state/paragraph_state';
-import { useParagraphs } from '../../../../../hooks/use_paragraphs';
+import { NotebookReactContext } from '../../../context_provider/context_provider';
+import { NotebookType } from '../../../../../../common/types/notebooks';
 
 const inputPlaceholderString =
   'Type %md on the first line to define the input type. \nCode block starts here.';
@@ -30,7 +31,12 @@ export const MarkdownParagraph = ({
   actionDisabled: boolean;
 }) => {
   const paragraphValue = useObservable(paragraphState.getValue$(), paragraphState.value);
-  const { runParagraph } = useParagraphs();
+  const context = useContext(NotebookReactContext);
+  const { notebookType } = useObservable(
+    context.state.value.context.getValue$(),
+    context.state.value.context.value
+  );
+  const { runParagraph } = context.paragraphHooks;
 
   const runParagraphHandler = async () => {
     paragraphState.updateUIState({
@@ -41,7 +47,7 @@ export const MarkdownParagraph = ({
         id: paragraphValue.id,
       });
     } catch (e) {
-      // do nothing
+      console.log(`Fail to run paragraph`, e);
     } finally {
       paragraphState.updateUIState({
         isRunning: false,
@@ -49,63 +55,71 @@ export const MarkdownParagraph = ({
     }
   };
 
+  useEffectOnce(() => {
+    if (notebookType !== NotebookType.AGENTIC) {
+      paragraphState.updateUIState({
+        actions: [
+          {
+            name: 'Edit',
+            action: () => {
+              paragraphState.updateUIState({ viewMode: 'view_both' });
+            },
+          },
+        ],
+      });
+    }
+  });
+
   const isRunning = paragraphValue.uiState?.isRunning;
 
   return (
     <>
-      <EuiSpacer size="s" />
       <div style={{ width: '100%' }}>
         {paragraphValue.uiState?.viewMode !== 'output_only' ? (
-          <EuiCompressedTextArea
-            data-test-subj={`editorArea-${paragraphValue.id}`}
-            placeholder={inputPlaceholderString}
-            id={`editorArea-${paragraphValue.id}`}
-            className="editorArea"
-            fullWidth
-            disabled={!!isRunning || actionDisabled}
-            onChange={(evt) => {
-              paragraphState.updateInput({
-                inputText: evt.target.value,
-              });
-              paragraphState.updateUIState({
-                isOutputStale: true,
-              });
-            }}
-            onKeyPress={(evt) => {
-              if (evt.key === 'Enter' && evt.shiftKey) {
-                runParagraphHandler();
-              }
-            }}
-            value={paragraphValue.input.inputText}
-            autoFocus
-          />
-        ) : (
-          <EuiCodeBlock
-            data-test-subj={`paraInputCodeBlock-${paragraphValue.id}`}
-            language={paragraphValue.input.inputText.match(/^%(sql|md)/)?.[1]}
-            overflowHeight={200}
-            paddingSize="s"
-          >
-            {paragraphValue.input.inputText}
-          </EuiCodeBlock>
-        )}
-      </div>
-      <EuiSpacer size="m" />
-      {actionDisabled ? null : (
-        <EuiFlexGroup alignItems="center" gutterSize="s">
-          <EuiFlexItem grow={false}>
-            <EuiSmallButton
-              data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
-              onClick={() => {
-                runParagraphHandler();
+          <>
+            <EuiCompressedTextArea
+              data-test-subj={`editorArea-${paragraphValue.id}`}
+              placeholder={inputPlaceholderString}
+              id={`editorArea-${paragraphValue.id}`}
+              className="editorArea"
+              fullWidth
+              disabled={!!isRunning || actionDisabled}
+              onChange={(evt) => {
+                paragraphState.updateInput({
+                  inputText: evt.target.value,
+                });
+                paragraphState.updateUIState({
+                  isOutputStale: true,
+                });
               }}
-            >
-              {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Refresh' : 'Run'}
-            </EuiSmallButton>
-          </EuiFlexItem>
-        </EuiFlexGroup>
-      )}
-      <EuiSpacer size="m" />
+              onKeyPress={(evt) => {
+                if (evt.key === 'Enter' && evt.shiftKey) {
+                  runParagraphHandler();
+                }
+              }}
+              value={paragraphValue.input.inputText}
+              autoFocus
+            />
+            <EuiSpacer size="m" />
+            {actionDisabled ? null : (
+              <EuiFlexGroup alignItems="center" gutterSize="s">
+                <EuiFlexItem grow={false}>
+                  <EuiSmallButton
+                    data-test-subj={`runRefreshBtn-${paragraphValue.id}`}
+                    onClick={() => {
+                      runParagraphHandler();
+                      paragraphState.updateUIState({ viewMode: 'output_only' });
+                    }}
+                  >
+                    {ParagraphState.getOutput(paragraphValue)?.result !== '' ? 'Save' : 'Run'}
+                  </EuiSmallButton>
+                </EuiFlexItem>
+              </EuiFlexGroup>
+            )}
+            <EuiSpacer size="m" />
+          </>
+        ) : null}
+      </div>
       {isRunning ? (
         <EuiLoadingContent />
       ) : (
@@ -113,8 +127,14 @@ export const MarkdownParagraph = ({
           className="wrapAll markdown-output-text"
           data-test-subj="markdownOutputText"
           size="s"
+          style={{
+            // TODO remove this when add buttons
+            ...(notebookType !== NotebookType.AGENTIC && { marginBottom: '1.5rem' }),
+          }}
         >
-          <MarkdownRender source={ParagraphState.getOutput(paragraphValue)?.result} />
+          <EuiMarkdownFormat>
+            {ParagraphState.getOutput(paragraphValue)?.result || ''}
+          </EuiMarkdownFormat>
         </EuiText>
       )}
     </>

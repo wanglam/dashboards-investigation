@@ -1,7 +1,7 @@
 {
   "id": "investigationDashboards",
-  "version": "3.2.0.0",
-  "opensearchDashboardsVersion": "3.2.0",
+  "version": "3.7.0.0",
+  "opensearchDashboardsVersion": "3.7.0",
   "server": true,
   "ui": true,
   "requiredPlugins": [
@@ -13,11 +13,16 @@
     "opensearchDashboardsUtils",
     "savedObjects",
     "visualizations",
-    "expressions"
+    "expressions",
+    "uiActions"
   ],
   "optionalPlugins": [
     "dataSource",
-    "dataSourceManagement"
+    "dataSourceManagement",
+    "contextProvider",
+    "explore",
+    "usageCollection",
+    "chat"
   ],
   "configPath": [
     "investigation"

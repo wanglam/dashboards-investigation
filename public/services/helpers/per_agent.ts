@@ -9,20 +9,20 @@ import { ParagraphStateValue } from '../../../common/state/paragraph_state';
 import { ParagraphServiceSetup } from '../paragraph_service';
 import { getInputType } from '../../../common/utils/paragraph';
 
-export const generateContextPromptFromParagraphs = async ({
-  paragraphService,
-  paragraphs,
-  notebookInfo,
-  ignoreInputTypes = [],
-}: {
+interface ParagraphPromptInput {
   paragraphService: ParagraphServiceSetup;
   paragraphs: Array<ParagraphStateValue<unknown, unknown, {}>>;
-  notebookInfo: NotebookContext;
   ignoreInputTypes?: string[];
-}) => {
-  const allContext = await Promise.all(
+}
+
+export const generateParagraphPrompt = async ({
+  paragraphService,
+  paragraphs,
+  ignoreInputTypes = [],
+}: ParagraphPromptInput) => {
+  return await Promise.all(
     paragraphs
-      .filter((paragraph) => !ignoreInputTypes.includes(paragraph.input.inputText))
+      .filter((paragraph) => !ignoreInputTypes.includes(paragraph.input.inputType))
       .map(async (paragraph) => {
         if (!paragraph) {
           return '';
@@ -36,6 +36,24 @@ export const generateContextPromptFromParagraphs = async ({
         return await paragraphRegistry.getContext(paragraph);
       })
   );
+};
+
+export const generateContextPromptFromParagraphs = async ({
+  paragraphService,
+  paragraphs,
+  notebookInfo,
+  ignoreInputTypes = [],
+}: {
+  paragraphService: ParagraphServiceSetup;
+  paragraphs: Array<ParagraphStateValue<unknown, unknown, {}>>;
+  notebookInfo: NotebookContext;
+  ignoreInputTypes?: string[];
+}) => {
+  const allContext = await generateParagraphPrompt({
+    paragraphService,
+    paragraphs,
+    ignoreInputTypes,
+  });
 
   return [getNotebookTopLevelContextPrompt(notebookInfo), ...allContext]
     .filter((item) => item)
@@ -44,41 +62,75 @@ export const generateContextPromptFromParagraphs = async ({
 };
 
 const getTimezoneFullfilledDateString = (time: number): string =>
-  moment.utc(time).format('YYYY-MM-DD HH:mm:ss');
+  moment.utc(time).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]');
 
 export const getNotebookTopLevelContextPrompt = (notebookInfo: NotebookContext) => {
-  const { index, timeField, timeRange, filters, variables, summary } = notebookInfo || {};
+  const { index, timeField, timeRange, filters, variables, summary, log } = notebookInfo || {};
   if (!index && !timeField && !timeRange && !filters && !variables && !summary) {
     return '';
   }
 
   return `
-    Step: Top level context for investigation.
-    Step Result:
-    You are an AI assistant helping with root cause analysis based on log data. I'm investigating an issue in a system and need your analytical expertise.
+# Investigation Context
 
-    ## Context Information
-    ${summary ? `**Investigation Summary**: ${summary}` : ''}
-    ${index ? `**Relevant Index name**: ${index}` : ''}
-    ${timeField ? `**Time Field**: ${timeField}` : ''}
-    ${
-      timeRange?.selectionFrom && timeRange.selectionTo
-        ? `**Time Period the issue happens**: From ${getTimezoneFullfilledDateString(
-            timeRange.selectionFrom
-          )} to ${getTimezoneFullfilledDateString(timeRange.selectionTo)}
-        `
-        : ''
-    }
-    ${
-      timeRange?.baselineFrom && timeRange.baselineTo
-        ? `**Time Period as baseline**: From ${getTimezoneFullfilledDateString(
-            timeRange.baselineFrom
-          )} to ${getTimezoneFullfilledDateString(timeRange.baselineTo)}
-        `
-        : ''
-    }
-    ${filters ? `**Applied Filters**: ${JSON.stringify(filters, null, 2)}` : ''}
-    ${variables ? `**Variables**: ${JSON.stringify(variables, null, 2)}` : ''}
-    ${variables?.pplQuery ? `**PPL Query user executed**: ${variables.pplQuery}` : ''}
+You are an AI assistant helping with root cause analysis based on log data. I'm investigating an issue in a system and need your analytical expertise.
+
+## Context Information
+${
+  summary
+    ? `**Investigation Summary**: ${summary}
+`
+    : ''
+}
+${
+  index
+    ? `**Relevant Index name**: ${index}
+`
+    : ''
+}
+${
+  timeField
+    ? `**Time Field**: ${timeField}
+`
+    : ''
+}
+${
+  timeRange?.selectionFrom && timeRange.selectionTo
+    ? `**Time Period the issue happens**: From ${getTimezoneFullfilledDateString(
+        timeRange.selectionFrom
+      )} to ${getTimezoneFullfilledDateString(timeRange.selectionTo)}
+    `
+    : ''
+}
+${
+  timeRange?.baselineFrom && timeRange.baselineTo
+    ? `**Time Period as baseline**: From ${getTimezoneFullfilledDateString(
+        timeRange.baselineFrom
+      )} to ${getTimezoneFullfilledDateString(timeRange.baselineTo)}
+    `
+    : ''
+}
+${
+  filters
+    ? `**Applied Filters**: ${JSON.stringify(filters, null, 2)}
+`
+    : ''
+}
+${
+  variables
+    ? `**Variables**: ${JSON.stringify(variables, null, 2)}
+`
+    : ''
+}
+${variables?.pplQuery ? `**PPL Query user executed**: ${variables.pplQuery}` : ''}
+${
+  log
+    ? `**Selected log**:
+\`\`\`JSON
+${JSON.stringify(log)}
+\`\`\`
+`.trim()
+    : ''
+}
   `;
 };

@@ -13,12 +13,26 @@ import {
 import { DataSourceManagementPluginSetup } from '../../../src/plugins/data_source_management/public';
 import { EmbeddableSetup, EmbeddableStart } from '../../../src/plugins/embeddable/public';
 import { NavigationPublicPluginStart } from '../../../src/plugins/navigation/public';
-import { VisualizationsSetup } from '../../../src/plugins/visualizations/public';
+import {
+  VisualizationsSetup,
+  VisualizationsStart,
+} from '../../../src/plugins/visualizations/public';
 import { ExpressionsStart } from '../../../src/plugins/expressions/public';
-import { AppMountParameters, CoreStart } from '../../../src/core/public';
+import { AppMountParameters, CoreStart, OverlayStart } from '../../../src/core/public';
+import { UiActionsStart } from '../../../src/plugins/ui_actions/public';
 import PPLService from './services/requests/ppl';
 import { ParagraphServiceSetup } from './services/paragraph_service';
 import { ContextServiceSetup } from './services/context_service';
+import { ContextProviderStart } from '../../../src/plugins/context_provider/public';
+import { FindingService } from './services/finding_service';
+import { NoteBookAssistantContext } from '../common/types/assistant_context';
+import type { ExplorePluginSetup, ExplorePluginStart } from '../../../src/plugins/explore/public';
+import {
+  UsageCollectionSetup,
+  UsageCollectionStart,
+} from '../../../src/plugins/usage_collection/public';
+import { ChatPluginSetup, ChatPluginStart } from '../../../src/plugins/chat/public';
+import type { PluginTelemetryRecorder } from '../../../src/core/public';
 
 export interface AppPluginStartDependencies {
   navigation: NavigationPublicPluginStart;
@@ -28,6 +42,13 @@ export interface AppPluginStartDependencies {
   data: DataPublicPluginStart;
   dataSource: DataSourcePluginStart;
   expressions: ExpressionsStart;
+  visualizations: VisualizationsStart;
+  uiActions: UiActionsStart;
+  contextProvider?: ContextProviderStart;
+  explore?: ExplorePluginStart;
+  usageCollection?: UsageCollectionStart;
+  chat?: ChatPluginStart;
+  overlay?: OverlayStart;
 }
 
 export interface SetupDependencies {
@@ -36,15 +57,21 @@ export interface SetupDependencies {
   data: DataPublicPluginSetup;
   dataSource: DataSourcePluginSetup;
   dataSourceManagement?: DataSourceManagementPluginSetup;
+  explore?: ExplorePluginSetup;
+  usageCollection?: UsageCollectionSetup;
+  chat?: ChatPluginSetup;
 }
 
 export type NoteBookServices = CoreStart &
-  AppPluginStartDependencies & {
+  Omit<AppPluginStartDependencies, 'chat'> & {
     appName: string;
     pplService: PPLService;
     appMountService?: AppMountParameters;
     paragraphService: ParagraphServiceSetup;
     contextService: ContextServiceSetup;
+    updateContext: (id: string, chatContext: NoteBookAssistantContext | undefined) => void;
+    findingService: FindingService;
+    investigationTelemetry: PluginTelemetryRecorder;
   };
 
 export interface InvestigationSetup {
@@ -55,3 +82,12 @@ export interface InvestigationSetup {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface InvestigationStart {}
+
+// Declare action context for StartInvestigationAction
+declare module '../../../src/plugins/ui_actions/public' {
+  export interface ActionContextMapping {
+    startInvestigationAction: {
+      embeddable: import('../../../src/plugins/embeddable/public').IEmbeddable;
+    };
+  }
+}

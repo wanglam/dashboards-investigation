@@ -11,25 +11,32 @@ export interface ParagraphAction {
   action: () => void;
 }
 
+export interface ParagraphUIState {
+  viewMode: 'input_only' | 'output_only' | 'view_both';
+  inQueue?: boolean;
+  isRunning?: boolean;
+  isOutputStale?: boolean;
+  actions: ParagraphAction[];
+  dataDistribution?: {
+    fetchDataLoading?: boolean;
+    distributionLoading?: boolean;
+    error?: string;
+  };
+  logPattern?: {
+    isLoadingLogInsights?: boolean;
+    isLoadingPatternMapDifference?: boolean;
+    isLoadingLogSequence?: boolean;
+    error?: string;
+  };
+}
+
 export interface ParagraphStateValue<
   TOutputResult = string,
   TInputParameters = unknown,
   TFullfilledOutput = {}
 > extends ParagraphBackendType<TOutputResult, TInputParameters> {
   fullfilledOutput?: TFullfilledOutput; // this is the fullfilled output, like PPL query result / PER agent response
-  uiState?: Partial<{
-    viewMode: 'input_only' | 'output_only' | 'view_both';
-    inQueue?: boolean;
-    isRunning?: boolean;
-    isOutputStale?: boolean;
-    actions: ParagraphAction[];
-    dataDistribution?: {
-      fetchDataLoading?: boolean;
-      distributionLoading?: boolean;
-      error?: string;
-    };
-    ppl?: { isWaitingForPPLResult?: boolean; error?: string };
-  }>;
+  uiState?: Partial<ParagraphUIState>;
 }
 
 export class ParagraphState<
@@ -67,7 +74,7 @@ export class ParagraphState<
     return {
       ...value,
       uiState: {
-        viewMode: 'view_both',
+        viewMode: 'output_only',
         ...(value.uiState as Partial<ParagraphStateValue['uiState']>),
       },
     };

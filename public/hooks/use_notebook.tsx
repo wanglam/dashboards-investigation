@@ -6,22 +6,23 @@
 import { useContext, useCallback } from 'react';
 import { NoteBookServices } from 'public/types';
 import {
+  HypothesisItem,
   IndexInsight,
-  IndexInsightContent,
   NotebookBackendType,
   NotebookContext,
+  PERAgentTopology,
 } from 'common/types/notebooks';
 import { NotebookReactContext } from '../components/notebooks/context_provider/context_provider';
-import { useParagraphs } from './use_paragraphs';
 import { NOTEBOOKS_API_PREFIX } from '../../common/constants/notebooks';
 import { isValidUUID } from '../components/notebooks/components/helpers/notebooks_parser';
 import { useOpenSearchDashboards } from '../../../../src/plugins/opensearch_dashboards_react/public';
 import { callOpenSearchCluster } from '../plugin_helpers/plugin_proxy_call';
 import { parsePPLQuery } from '../../common/utils';
+import { getDataSourceVersion } from '../utils/data_source_utils';
 
 export const useNotebook = () => {
   const context = useContext(NotebookReactContext);
-  const { showParagraphRunning } = useParagraphs();
+  const { showParagraphRunning } = context.paragraphHooks;
   const {
     services: { http },
   } = useOpenSearchDashboards<NoteBookServices>();
@@ -65,7 +66,6 @@ export const useNotebook = () => {
 
         if (indexInsightResponse?.index_insight && indexInsightResponse.index_insight?.content) {
           const content = JSON.parse(indexInsightResponse.index_insight.content);
-          addIndexCorrelation(content);
           await updateNotebookContext({
             indexInsight: content,
           });
@@ -74,50 +74,6 @@ export const useNotebook = () => {
       } catch (error) {
         console.error('Error fetching index insights:', error);
         throw error;
-      }
-
-      function addIndexCorrelation(content: IndexInsightContent) {
-        // FIXME to replace with real data
-        if (!content.related_indexes) {
-          if (/ss4o_metrics.*/.test(index)) {
-            content.related_indexes = [
-              {
-                index_name: 'ss4o_logs*',
-                is_log_index: true,
-                log_message_field: 'body',
-                time_field: 'time', // get the value from index pattern if possible
-              },
-              {
-                index_name: 'otel-v1-apm-span*',
-                is_log_index: false,
-              },
-            ];
-          } else if (/ss4o_logs.*/.test(index)) {
-            content.related_indexes = [
-              {
-                index_name: 'ss4o_metrics*',
-                is_log_index: false,
-              },
-              {
-                index_name: 'otel-v1-apm-span*',
-                is_log_index: false,
-              },
-            ];
-          } else if (/otel-v1-apm-span.*/.test(index) || /jaeger-span.*/.test(index)) {
-            content.related_indexes = [
-              {
-                index_name: 'ss4o_logs*',
-                is_log_index: true,
-                log_message_field: 'body',
-                time_field: 'time',
-              },
-              {
-                index_name: 'ss4o_metrics*',
-                is_log_index: false,
-              },
-            ];
-          }
-        }
       }
     },
     [updateNotebookContext, http]
@@ -173,6 +129,17 @@ export const useNotebook = () => {
           indexInsight,
         };
       }
+
+      if (!contextPayload.dataSourceVersion) {
+        const version = await getDataSourceVersion(http, res.context?.dataSourceId);
+        if (version) {
+          contextPayload = { ...contextPayload, dataSourceVersion: version };
+          updateNotebookContext({ dataSourceVersion: version }).catch((err) =>
+            console.error('Failed to save dataSourceVersion:', err)
+          );
+        }
+      }
+
       return {
         ...res,
         vizPrefix: res.vizPrefix || '',
@@ -187,10 +154,96 @@ export const useNotebook = () => {
     });
 
     return promise;
-  }, [context.state, http, showParagraphRunning, fetchIndexInsights]);
+  }, [context.state, http, showParagraphRunning, fetchIndexInsights, updateNotebookContext]);
+
+  const updateHypotheses = useCallback(
+    async (
+      hypotheses: HypothesisItem[],
+      topologies?: PERAgentTopology[],
+      isNewHypotheses?: boolean
+    ) => {
+      const {
+        id: openedNoteId,
+        runningMemory,
+        historyMemory,
+        failedInvestigation,
+      } = context.state.value;
+      try {
+        const response = await http.put(`${NOTEBOOKS_API_PREFIX}/note/updateHypotheses`, {
+          body: JSON.stringify({
+            notebookId: openedNoteId,
+            hypotheses,
+            ...(topologies !== undefined && { topologies }),
+            ...(isNewHypotheses
+              ? { historyMemory: runningMemory }
+              : { historyMemory: historyMemory || null }),
+            ...(isNewHypotheses
+              ? { runningMemory: null }
+              : { runningMemory: runningMemory || null }),
+            failedInvestigation: failedInvestigation
+              ? {
+                  error: {
+                    message: failedInvestigation.error.message,
+                    name: failedInvestigation.error.name,
+                    cause: (failedInvestigation.error as any).cause,
+                    isRecoverable: !!failedInvestigation.error.isRecoverable,
+                  },
+                  memory: failedInvestigation.memory,
+                  timestamp: failedInvestigation.timestamp,
+                }
+              : null,
+          }),
+        });
+
+        context.state.updateValue({
+          hypotheses,
+          ...(topologies !== undefined && { topologies }),
+          dateModified:
+            response?.attributes?.savedNotebook?.dateModified || new Date().toISOString(),
+        });
+
+        return response;
+      } catch (error) {
+        console.error('Error updating notebook investigation result:', error);
+        throw error;
+      }
+    },
+    [context.state, http]
+  );
+
+  const deleteHypotheses = useCallback(
+    async (hypothesisId?: string) => {
+      // Clear old memory IDs before starting new investigation
+      context.state.updateValue({ runningMemory: undefined });
+      const { id: openedNoteId } = context.state.value;
+      try {
+        const endpoint = hypothesisId
+          ? `${NOTEBOOKS_API_PREFIX}/savedNotebook/${openedNoteId}/deleteHypothesis/${hypothesisId}`
+          : `${NOTEBOOKS_API_PREFIX}/savedNotebook/${openedNoteId}/deleteAllHypotheses`;
+
+        await http.delete(endpoint);
+
+        const currentHypotheses = context.state.value.hypotheses || [];
+        const updatedHypotheses = hypothesisId
+          ? currentHypotheses.filter((h) => h.id !== hypothesisId)
+          : [];
+
+        context.state.updateValue({
+          hypotheses: updatedHypotheses,
+          dateModified: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error('Error deleting hypotheses:', error);
+        throw error;
+      }
+    },
+    [context.state, http]
+  );
 
   return {
     loadNotebook,
     updateNotebookContext,
+    updateHypotheses,
+    deleteHypotheses,
   };
 };

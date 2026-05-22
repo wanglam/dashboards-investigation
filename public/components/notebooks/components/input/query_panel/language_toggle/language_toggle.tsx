@@ -8,20 +8,28 @@ import { EuiBetaBadge, EuiContextMenuItem, EuiContextMenuPanel, EuiPopover } fro
 import classNames from 'classnames';
 import { useInputContext } from '../../input_context';
 import { QueryLanguage, QueryState } from '../../types';
-import { NotebookType } from '../../../../../../../common/types/notebooks';
+import { generateDefaultQuery } from '../../../../../../../public/utils/query';
 
 import './language_toggle.scss';
 
 export const LanguageToggle: React.FC<{ promptModeIsAvailable: boolean }> = ({
   promptModeIsAvailable,
 }) => {
-  const { inputValue, notebookType, handleInputChange, handleSetCurrInputType } = useInputContext();
+  const {
+    inputValue,
+    isAgenticNotebook,
+    isDisabled,
+    handleInputChange,
+    handleSetCurrInputType,
+  } = useInputContext();
 
-  const { isPromptEditorMode, queryLanguage } = (inputValue as QueryState) || {};
+  const { isPromptEditorMode, queryLanguage, selectedIndex } = (inputValue as QueryState) || {};
 
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const onButtonClick = () => setIsPopoverOpen(!isPopoverOpen);
+  const onButtonClick = () => {
+    if (!isDisabled) setIsPopoverOpen(!isPopoverOpen);
+  };
   const closePopover = useCallback(() => setIsPopoverOpen(false), []);
 
   const onItemClick = useCallback(
@@ -32,17 +40,26 @@ export const LanguageToggle: React.FC<{ promptModeIsAvailable: boolean }> = ({
       const actualLanguage = isAI ? 'PPL' : language;
 
       handleInputChange({
-        value: '',
         query: '',
         queryLanguage: actualLanguage,
         isPromptEditorMode: isAI,
       });
 
+      requestAnimationFrame(() =>
+        // Wait until monaco editor correctly switch the query langauge
+        handleInputChange({
+          value:
+            selectedIndex?.title && !isAI
+              ? generateDefaultQuery(selectedIndex?.title, actualLanguage)
+              : '',
+        })
+      );
+
       if (!isAI) {
         handleSetCurrInputType(actualLanguage);
       }
     },
-    [closePopover, handleInputChange, handleSetCurrInputType]
+    [selectedIndex, closePopover, handleInputChange, handleSetCurrInputType]
   );
 
   const badgeLabel = isPromptEditorMode ? 'AI' : queryLanguage || 'PPL';
@@ -58,7 +75,7 @@ export const LanguageToggle: React.FC<{ promptModeIsAvailable: boolean }> = ({
       </EuiContextMenuItem>,
     ];
 
-    if (notebookType === NotebookType.CLASSIC) {
+    if (!isAgenticNotebook) {
       output.push(
         <EuiContextMenuItem
           key="SQL"
@@ -83,7 +100,7 @@ export const LanguageToggle: React.FC<{ promptModeIsAvailable: boolean }> = ({
     }
 
     return output;
-  }, [onItemClick, promptModeIsAvailable, notebookType]);
+  }, [onItemClick, promptModeIsAvailable, isAgenticNotebook]);
 
   return (
     // This div is needed to allow for the gradient styling

@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Filter } from '../../../../src/plugins/data/common';
+
 export interface OptionsType {
   baseUrl: string;
   payload?: any;
@@ -18,8 +20,9 @@ export interface OptionsType {
 }
 
 export enum NoteBookSource {
-  ALERTING = 'Alert',
   DISCOVER = 'Discover',
+  CHAT = 'Chat',
+  VISUALIZATION = 'VISUALIZATION',
 }
 
 export enum NotebookType {
@@ -27,17 +30,20 @@ export enum NotebookType {
   CLASSIC = 'Classic',
 }
 
+export interface InvestigationTimeRange {
+  selectionFrom: number;
+  selectionTo: number;
+  baselineFrom?: number;
+  baselineTo?: number;
+}
+
 export interface NotebookContext {
   dataSourceId?: string;
+  dataSourceVersion?: string;
   timeField?: string;
   index?: string;
   currentTime?: number; // the time when PPL been executed when trigger from discovery
-  timeRange?: {
-    selectionFrom: number;
-    selectionTo: number;
-    baselineFrom: number;
-    baselineTo: number;
-  };
+  timeRange?: InvestigationTimeRange;
   source?: NoteBookSource;
   filters?: Array<Record<string, any>>; // For phase 1, we only support DSL filter
   summary?: string;
@@ -45,22 +51,17 @@ export interface NotebookContext {
   variables?: {
     // used for source type: Discover
     pplQuery?: string;
-    // used for source type: Alert
-    alert?: {
-      start_time: string;
-      last_notification_time: string;
-      severity: string;
-      monitor_id: string;
-      alertNumber: number;
-      trigger_name: string;
-      monitor_name: string;
-    };
     [key: string]: unknown;
+
+    // used for source type: Discover visualization
+    visualizationFilters?: Filter[];
   };
   memoryId?: string;
   indexInsight?: IndexInsightContent;
   notebookType?: NotebookType;
   initialGoal?: string;
+  log?: Record<string, any>;
+  symptom?: string;
 }
 
 export interface ParagraphBackendType<TOutputResult, TInputParameters = unknown> {
@@ -80,6 +81,40 @@ export interface ParagraphBackendType<TOutputResult, TInputParameters = unknown>
   dateModified: string;
   dateCreated: string;
   dataSourceMDSId?: string;
+  aiGenerated?: boolean;
+}
+
+export enum HypothesisStatus {
+  RULED_OUT = 'RULED_OUT',
+  RULED_IN = '',
+  ACCEPTED = 'ACCEPTED',
+}
+
+export interface HypothesisItem {
+  id: string;
+  title: string;
+  description: string;
+  likelihood: number;
+  supportingFindingParagraphIds: string[];
+  irrelevantFindingParagraphIds?: string[];
+  userSelectedFindingParagraphIds?: string[];
+  newAddedFindingIds?: string[];
+  dateCreated: string;
+  dateModified: string;
+  status?: HypothesisStatus;
+}
+
+export interface AgenticMemory {
+  executorMemoryId?: string;
+  parentInteractionId?: string;
+  memoryContainerId?: string;
+  owner?: string;
+}
+
+export interface FailedInvestigationInfo {
+  error: Error & { isRecoverable?: boolean };
+  memory?: AgenticMemory;
+  timestamp: string;
 }
 
 export type ParagraphInputType<TParameters = unknown> = ParagraphBackendType<TParameters>['input'];
@@ -93,6 +128,12 @@ export interface NotebookBackendType {
   path: string;
   vizPrefix?: string;
   owner?: string;
+  currentUser?: string;
+  hypotheses?: HypothesisItem[];
+  runningMemory?: AgenticMemory;
+  historyMemory?: AgenticMemory;
+  topologies: PERAgentTopology[];
+  failedInvestigation?: FailedInvestigationInfo;
 }
 
 export interface SummaryDataItem {
@@ -103,6 +144,7 @@ export interface SummaryDataItem {
     baselinePercentage?: number;
     selectionPercentage: number;
   }>;
+  excludeFromContext?: boolean;
 }
 
 export interface AnomalyVisualizationAnalysisOutputResult {
@@ -129,17 +171,50 @@ export interface IndexInsight {
   index_insight: IndexInsightBody;
 }
 
-export interface DeepResearchOutputResult {
-  taskId: string;
-  memoryId?: string;
-  // FIXME: Should be removed in the final release
-  agent_id?: string;
+export interface PERAgentHypothesisFinding {
+  id: string;
+  description: string;
+  importance: number;
+  evidence: string;
+  type?: string;
 }
 
-export interface DeepResearchInputParameters {
-  // FIXME: Should be removed in the final release
-  PERAgentInput?: Record<string, unknown>;
-  PERAgentContext?: string;
-  prompts?: { systemPrompt?: string; executorSystemPrompt?: string };
-  agentId?: string;
+export interface FindingParagraphParameters {
+  finding?: Omit<PERAgentHypothesisFinding, 'id'> & { feedback?: 'CONFIRMED' | 'REJECTED' };
+}
+
+export interface PERAgentHypothesisItem {
+  id: string;
+  title: string;
+  description: string;
+  likelihood: number;
+  supporting_findings: string[];
+}
+
+export interface PERAgentTopologyNode {
+  id: string;
+  name: string;
+  startTime: string;
+  duration: string;
+  status: 'success' | 'failed' | 'error';
+  parentId: string | null;
+}
+
+export interface PERAgentTopology {
+  id: string;
+  description: string;
+  traceId: string;
+  nodes: PERAgentTopologyNode[];
+  hypothesisIds: string[];
+}
+
+export interface PERAgentInvestigationResponse {
+  findings: PERAgentHypothesisFinding[];
+  hypotheses: PERAgentHypothesisItem[];
+  topologies: PERAgentTopology[];
+  investigationName?: string;
+}
+
+export interface NotebookComponentProps {
+  showPageHeader?: boolean;
 }

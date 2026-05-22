@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { i18n } from '@osd/i18n';
 import {
   EuiCompressedFieldSearch,
   EuiFlexGroup,
@@ -29,17 +30,14 @@ import moment from 'moment';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-  CREATE_NOTE_MESSAGE,
+  NOTEBOOK_NAME_MAX_LENGTH,
   NOTEBOOKS_DOCUMENTATION_URL,
 } from '../../../../common/constants/notebooks';
 import { UI_DATE_FORMAT } from '../../../../common/constants/shared';
 import { setNavBreadCrumbs } from '../../../../common/utils/set_nav_bread_crumbs';
 import { HeaderControlledComponentsWrapper } from '../../../../public/plugin_helpers/plugin_headerControl';
-import {
-  CreateNotebookModal,
-  DeleteNotebookModal,
-  getSampleNotebooksModal,
-} from './helpers/modal_containers';
+import { DeleteNotebookModal, getSampleNotebooksModal } from './helpers/modal_containers';
+import { CustomInputModal } from './helpers/custom_modals/custom_input_modal';
 import { NotebookInfo } from './main';
 import { NOTEBOOKS_API_PREFIX } from '../../../../common/constants/notebooks';
 import {
@@ -48,6 +46,7 @@ import {
 } from '../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { NoteBookServices } from '../../../types';
 import { NotebookType } from '../../../../common/types/notebooks';
+import { SavedObject } from '../../../../../../src/core/types';
 
 interface NoteTableProps {
   deleteNotebook: (noteList: string[], toastMessage?: string) => Promise<void>;
@@ -64,10 +63,20 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
   const [selectedNotebooks, setSelectedNotebooks] = useState<NotebookInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+    pageSizeOptions: [10, 20, 50],
+  });
   const location = useLocation();
 
   const dataSourceEnabled = !!dataSource;
   const newNavigation = chrome.navGroup.getNavGroupEnabled();
+
+  // Reset pagination to first page when search query changes
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [searchQuery]);
 
   // Fetches path and id for all stored notebooks
   const fetchNotebooks = useCallback(() => {
@@ -87,6 +96,8 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
       });
   }, [http]);
 
+  const finalNotebooks = notebooks;
+
   useEffect(() => {
     setNavBreadCrumbs(
       [],
@@ -97,12 +108,13 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
         },
       ],
       chrome,
-      notebooks.length
+      finalNotebooks.length
     );
     fetchNotebooks();
-  }, [notebooks.length, fetchNotebooks, chrome]);
+  }, [finalNotebooks.length, fetchNotebooks, chrome]);
 
   const closeModal = useCallback(() => {
+    window.location.assign('#/');
     setIsModalVisible(false);
   }, []);
   const showModal = () => {
@@ -112,8 +124,12 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
   // Creates a new notebook
   const createNotebook = useCallback(
     async (newNoteName: string, notebookType: NotebookType) => {
-      if (newNoteName.length >= 50 || newNoteName.length === 0) {
-        notifications.toasts.addDanger('Invalid notebook name');
+      if (newNoteName.length > NOTEBOOK_NAME_MAX_LENGTH || newNoteName.length === 0) {
+        notifications.toasts.addDanger(
+          i18n.translate('investigate.noteTable.invalidNotebookName', {
+            defaultMessage: 'Invalid notebook name',
+          })
+        );
         window.location.assign('#/');
         return;
       }
@@ -127,15 +143,24 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           body: JSON.stringify(newNoteObject),
         })
         .then(async (res) => {
-          notifications.toasts.addSuccess(`Notebook "${newNoteName}" successfully created!`);
+          notifications.toasts.addSuccess(
+            i18n.translate('investigate.noteTable.notebookCreatedSuccess', {
+              defaultMessage: 'Notebook "{notebookName}" successfully created!',
+              values: { notebookName: newNoteName },
+            })
+          );
           window.location.assign(`#/${res}`);
         })
         .catch((err) => {
           notifications.toasts.addDanger({
-            title: 'Please ask your administrator to enable Notebooks for you.',
+            title: i18n.translate('investigate.noteTable.enableNotebooksTitle', {
+              defaultMessage: 'Please ask your administrator to enable Notebooks for you.',
+            }),
             text: toMountPoint(
               <EuiLink href={NOTEBOOKS_DOCUMENTATION_URL} target="_blank">
-                Documentation
+                {i18n.translate('investigate.noteTable.documentationLink', {
+                  defaultMessage: 'Documentation',
+                })}
               </EuiLink>
             ),
           });
@@ -173,15 +198,26 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
 
   const createNote = useCallback(() => {
     setModalLayout(
-      <CreateNotebookModal
-        runModal={onCreate}
+      <CustomInputModal
+        runModal={(name, notebookType) => onCreate(name, notebookType || NotebookType.CLASSIC)}
         closeModal={closeModal}
-        labelTxt="Name"
-        titletxt="Create notebook"
-        btn1txt="Cancel"
-        btn2txt="Create"
-        openNoteName={undefined}
-        helpText={CREATE_NOTE_MESSAGE}
+        labelTxt={i18n.translate('investigate.noteTable.nameLabel', {
+          defaultMessage: 'Name',
+        })}
+        titletxt={i18n.translate('investigate.noteTable.createNotebookTitle', {
+          defaultMessage: 'Create notebook',
+        })}
+        btn1txt={i18n.translate('investigate.noteTable.cancelButton', {
+          defaultMessage: 'Cancel',
+        })}
+        btn2txt={i18n.translate('investigate.noteTable.createButton', {
+          defaultMessage: 'Create',
+        })}
+        openNoteName=""
+        helpText={i18n.translate('investigate.noteTable.createNoteMessage', {
+          defaultMessage: 'Enter a name to describe the purpose of this notebook.',
+        })}
+        notebookType={NotebookType.CLASSIC}
       />
     );
     showModal();
@@ -195,13 +231,24 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
   }, [location, createNote]);
 
   const deleteNote = () => {
-    const notebookString = `notebook${selectedNotebooks.length > 1 ? 's' : ''}`;
     setModalLayout(
       <DeleteNotebookModal
         onConfirm={onDelete}
         onCancel={closeModal}
-        title={`Delete ${selectedNotebooks.length} ${notebookString}`}
-        message={`Are you sure you want to delete the selected ${selectedNotebooks.length} ${notebookString}?`}
+        title={i18n.translate('investigate.noteTable.deleteNotebooksTitle', {
+          defaultMessage: 'Delete {count} {notebookString}',
+          values: {
+            count: selectedNotebooks.length,
+            notebookString: selectedNotebooks.length > 1 ? 'notebooks' : 'notebook',
+          },
+        })}
+        message={i18n.translate('investigate.noteTable.deleteNotebooksMessage', {
+          defaultMessage: 'Are you sure you want to delete the selected {count} {notebookString}?',
+          values: {
+            count: selectedNotebooks.length,
+            notebookString: selectedNotebooks.length > 1 ? 'notebooks' : 'notebook',
+          },
+        })}
       />
     );
     showModal();
@@ -222,7 +269,8 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           if (resp.total === 0) {
             return true;
           }
-          const hasDataSourceMDSId = resp.saved_objects.some((obj) =>
+          console.log(resp.saved_objects);
+          const hasDataSourceMDSId = resp.saved_objects.some((obj: SavedObject) =>
             obj.references.some((ref) => ref.type === 'data-source' && ref.id === dataSourceMDSId)
           );
 
@@ -241,7 +289,7 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           if (resp.total === 0) {
             return true;
           }
-          const hasDataSourceMDSId = resp.saved_objects.some((obj) =>
+          const hasDataSourceMDSId = resp.saved_objects.some((obj: SavedObject) =>
             obj.references.some((ref) => ref.type === 'data-source' && ref.id === dataSourceMDSId)
           );
 
@@ -249,13 +297,21 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           return !hasDataSourceMDSId;
         });
       if (flights) {
-        notifications.toasts.addSuccess('Adding sample data for flights. This can take some time.');
+        notifications.toasts.addSuccess(
+          i18n.translate('investigate.noteTable.addingSampleFlights', {
+            defaultMessage: 'Adding sample data for flights. This can take some time.',
+          })
+        );
         await http.post('../api/sample_data/flights', {
           query: { data_source_id: dataSourceMDSId },
         });
       }
       if (logs) {
-        notifications.toasts.addSuccess('Adding sample data for logs. This can take some time.');
+        notifications.toasts.addSuccess(
+          i18n.translate('investigate.noteTable.addingSampleLogs', {
+            defaultMessage: 'Adding sample data for logs. This can take some time.',
+          })
+        );
         await http.post('../api/sample_data/logs', {
           query: { data_source_id: dataSourceMDSId },
         });
@@ -272,11 +328,13 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           },
         })
         .then((resp) => {
-          if (dataSourceEnabled) {
+          if (dataSourceMDSId) {
             const searchTitle = `[Logs] Response Codes Over Time + Annotations_${dataSourceMDSLabel}`;
             const savedObjects = resp.saved_objects;
 
-            const foundObject = savedObjects.find((obj) => obj.attributes.title === searchTitle);
+            const foundObject = savedObjects.find(
+              (obj: SavedObject<{ title: string }>) => obj.attributes.title === searchTitle
+            );
             if (foundObject) {
               visIds.push(foundObject.id);
             }
@@ -295,11 +353,13 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           },
         })
         .then((resp) => {
-          if (dataSourceEnabled) {
+          if (dataSourceMDSId) {
             const searchTitle = `[Logs] Unique Visitors vs. Average Bytes_${dataSourceMDSLabel}`;
             const savedObjects = resp.saved_objects;
 
-            const foundObject = savedObjects.find((obj) => obj.attributes.title === searchTitle);
+            const foundObject = savedObjects.find(
+              (obj: SavedObject<{ title: string }>) => obj.attributes.title === searchTitle
+            );
             if (foundObject) {
               visIds.push(foundObject.id);
             }
@@ -318,11 +378,13 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           },
         })
         .then((resp) => {
-          if (dataSourceEnabled) {
+          if (dataSourceMDSId) {
             const searchTitle = `[Flights] Flight Count and Average Ticket Price_${dataSourceMDSLabel}`;
             const savedObjects = resp.saved_objects;
 
-            const foundObject = savedObjects.find((obj) => obj.attributes.title === searchTitle);
+            const foundObject = savedObjects.find(
+              (obj: SavedObject<{ title: string }>) => obj.attributes.title === searchTitle
+            );
             if (foundObject) {
               visIds.push(foundObject.id);
             }
@@ -332,7 +394,7 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
         });
       await http
         .post(`${NOTEBOOKS_API_PREFIX}/note/savedNotebook/addSampleNotebooks`, {
-          body: JSON.stringify({ visIds }),
+          body: JSON.stringify({ visIds, dataSourceId: dataSourceMDSId }),
         })
         .then((res) => {
           const newData = res.body.map((notebook: any) => ({
@@ -343,9 +405,17 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
           }));
           setNotebooks((prevState) => [...prevState, ...newData]);
         });
-      notifications.toasts.addSuccess(`Sample notebooks successfully added.`);
+      notifications.toasts.addSuccess(
+        i18n.translate('investigate.noteTable.sampleNotebooksSuccess', {
+          defaultMessage: 'Sample notebooks successfully added.',
+        })
+      );
     } catch (err: any) {
-      notifications.toasts.addDanger('Error adding sample notebooks.');
+      notifications.toasts.addDanger(
+        i18n.translate('investigate.noteTable.sampleNotebooksError', {
+          defaultMessage: 'Error adding sample notebooks.',
+        })
+      );
       console.error(err?.body?.message || err?.message || 'Unknown error');
     } finally {
       setLoading(false);
@@ -370,7 +440,7 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
         savedObjectsMDSClient,
         notifications,
         handleSelectedDataSourceChange
-      )
+      )!
     );
     showModal();
   };
@@ -382,7 +452,15 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
       sortable: true,
       truncateText: true,
       render: (value, record) => (
-        <EuiLink href={`#/${record.id}`}>{truncate(value, { length: 100 })}</EuiLink>
+        <EuiLink
+          href={
+            record.notebookType === NotebookType.AGENTIC
+              ? `#/agentic/${record.id}`
+              : `#/${record.id}`
+          }
+        >
+          {truncate(value, { length: 100 })}
+        </EuiLink>
       ),
     },
     {
@@ -458,7 +536,8 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
                 <EuiPageContentHeaderSection>
                   <EuiTitle size="s" data-test-subj="notebookTableTitle">
                     <h3>
-                      Notebooks<span className="panel-header-count"> ({notebooks.length})</span>
+                      Notebooks
+                      <span className="panel-header-count"> ({finalNotebooks.length})</span>
                     </h3>
                   </EuiTitle>
                   <EuiSpacer size="s" />
@@ -498,7 +577,7 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
                 </EuiPageContentHeaderSection>
               </EuiPageContentHeader>
             )}
-            {notebooks.length > 0 ? (
+            {finalNotebooks.length > 0 ? (
               <>
                 <EuiFlexGroup gutterSize="s" alignItems="center">
                   <EuiFlexItem grow={false}>
@@ -528,18 +607,24 @@ export function NoteTable({ deleteNotebook }: NoteTableProps) {
                   loading={loading}
                   items={
                     searchQuery
-                      ? notebooks.filter((notebook) =>
+                      ? finalNotebooks.filter((notebook) =>
                           notebook.path.toLowerCase().includes(searchQuery.toLowerCase())
                         )
-                      : notebooks
+                      : finalNotebooks
                   }
                   itemId="id"
                   columns={tableColumns}
                   tableLayout="auto"
-                  pagination={{
-                    initialPageSize: 10,
-                    pageSizeOptions: [8, 10, 13],
+                  onTableChange={({ page }) => {
+                    if (page) {
+                      setPagination((prev) => ({
+                        ...prev,
+                        pageIndex: page.index,
+                        pageSize: page.size,
+                      }));
+                    }
                   }}
+                  pagination={pagination}
                   sorting={{
                     sort: {
                       field: 'dateModified',

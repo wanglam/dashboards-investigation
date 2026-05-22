@@ -10,7 +10,7 @@ import { getSampleNotebooks } from '../../../server/common/helpers/notebooks/sam
 
 export function fetchNotebooks(
   savedObjectNotebooks: Array<SavedObject<{ savedNotebook: NotebookBackendType }>>,
-  userName?: string
+  agenticFeaturesEnabled?: boolean
 ) {
   const notebooks: Array<{
     dateCreated: string;
@@ -20,9 +20,11 @@ export function fetchNotebooks(
   }> = [];
   savedObjectNotebooks.forEach((savedObject) => {
     if (savedObject.type === 'observability-notebook' && savedObject.attributes.savedNotebook) {
-      const notebookOwner = savedObject.attributes.savedNotebook.owner;
-      const shouldFilterByOwner = userName && notebookOwner && notebookOwner !== userName;
-      if (shouldFilterByOwner) return;
+      if (
+        !agenticFeaturesEnabled &&
+        savedObject.attributes.savedNotebook.context?.notebookType === NotebookType.AGENTIC
+      )
+        return;
 
       notebooks.push({
         dateCreated: savedObject.attributes.savedNotebook.dateCreated,
@@ -39,7 +41,7 @@ export function fetchNotebooks(
 }
 
 export function createNotebook(notebookName: { name: string; context?: any }, userName?: string) {
-  const noteObject = {
+  const noteObject: NotebookBackendType = {
     dateCreated: new Date().toISOString(),
     name: notebookName.name,
     dateModified: new Date().toISOString(),
@@ -47,6 +49,7 @@ export function createNotebook(notebookName: { name: string; context?: any }, us
     paragraphs: [],
     path: notebookName.name,
     context: notebookName?.context ?? undefined,
+    hypotheses: [],
   };
 
   if (userName) {
@@ -66,6 +69,7 @@ export function cloneNotebook(fetchedNotebook: NotebookBackendType, name: string
     backend: 'kibana_1.0',
     paragraphs: fetchedNotebook.paragraphs,
     path: name,
+    owner: fetchedNotebook.owner,
   };
 
   return {
@@ -87,12 +91,20 @@ export function renameNotebook(noteBookObj: { name: string; noteId: string }) {
 
 export async function addSampleNotes(
   opensearchNotebooksClient: SavedObjectsClientContract,
-  visIds: string[]
+  visIds: string[],
+  dataSourceId?: string
 ) {
   const notebooks = getSampleNotebooks(visIds);
   const sampleNotebooks = [];
   try {
     for (const item of notebooks) {
+      const finalSaveItem = item;
+      if (dataSourceId !== undefined) {
+        finalSaveItem.savedNotebook.paragraphs = item.savedNotebook.paragraphs.map((paragraph) => ({
+          ...paragraph,
+          dataSourceMDSId: dataSourceId,
+        }));
+      }
       const createdNotebooks = await opensearchNotebooksClient.create(NOTEBOOK_SAVED_OBJECT, item);
       sampleNotebooks.push({
         dateCreated: createdNotebooks.attributes.savedNotebook.dateCreated,

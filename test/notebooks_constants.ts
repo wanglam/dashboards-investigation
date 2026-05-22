@@ -34,7 +34,7 @@ export const codeBlockNotebook = {
       id: 'paragraph_de00ea2d-a8fb-45d1-8085-698f51c6b6be',
     },
   ],
-  context: { notebookType: 'Agentic' },
+  context: { notebookType: 'Classic' },
 };
 
 export const migrateBlockNotebook = {
@@ -74,6 +74,14 @@ export const notebookPutResponse = {
 
 export const emptyNotebook = {
   path: 'sample-notebook-1',
+  dateCreated: '2023-12-14T18:49:43.375Z',
+  dateModified: '2023-12-15T06:13:23.463Z',
+  paragraphs: [],
+  context: { notebookType: 'Classic' },
+};
+
+export const agenticNotebook = {
+  path: 'sample-agentic-notebook',
   dateCreated: '2023-12-14T18:49:43.375Z',
   dateModified: '2023-12-15T06:13:23.463Z',
   paragraphs: [],

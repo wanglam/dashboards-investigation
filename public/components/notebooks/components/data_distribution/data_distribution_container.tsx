@@ -7,6 +7,7 @@ import React, { useContext, useMemo, useState, useEffect } from 'react';
 import {
   EuiButtonIcon,
   EuiCallOut,
+  EuiEmptyPrompt,
   EuiFlexGrid,
   EuiFlexGroup,
   EuiFlexItem,
@@ -16,9 +17,11 @@ import {
   EuiModalHeader,
   EuiPagination,
   EuiPanel,
+  EuiSmallButtonIcon,
   EuiSpacer,
   EuiText,
   EuiTitle,
+  EuiToolTip,
 } from '@elastic/eui';
 import { useObservable } from 'react-use';
 import { i18n } from '@osd/i18n';
@@ -27,11 +30,10 @@ import {
   NoteBookSource,
 } from '../../../../../common/types/notebooks';
 import { NoteBookServices } from '../../../../types';
-import { DataDistributionInput } from './embeddable/types';
+import { DataDistributionInput, MemoItemProps } from './embeddable/types';
 import { EmbeddableRenderer } from '../../../../../../../src/plugins/embeddable/public';
 import { NotebookReactContext } from '../../context_provider/context_provider';
 import { generateAllFieldCharts } from './render_data_distribution_vega';
-import { useParagraphs } from '../../../../hooks/use_paragraphs';
 import { ParagraphState } from '../../../../../common/state/paragraph_state';
 import { useOpenSearchDashboards } from '../../../../../../../src/plugins/opensearch_dashboards_react/public';
 import { DATA_DISTRIBUTION_PARAGRAPH_TYPE } from '../../../../../common/constants/notebooks';
@@ -45,7 +47,7 @@ export const DataDistributionContainer = ({
   paragraphState: ParagraphState<AnomalyVisualizationAnalysisOutputResult>;
 }) => {
   const {
-    services: { embeddable, paragraphService },
+    services: { notifications, embeddable, paragraphService },
   } = useOpenSearchDashboards<NoteBookServices>();
   const context = useContext(NotebookReactContext);
   const topContextValue = useObservable(
@@ -56,9 +58,10 @@ export const DataDistributionContainer = ({
   const { result } = ParagraphState.getOutput(paragraph)! || {};
   const { fieldComparison } = result! || {};
   const { timeRange, timeField, index, source } = topContextValue;
-  const { saveParagraph } = useParagraphs();
+  const { saveParagraph } = context.paragraphHooks;
   const [activePage, setActivePage] = useState(0);
   const [distributionModalExpand, setDistributionModalExpand] = useState(false);
+  const [isUpdatingParagraph, setIsUpdatingParagraph] = useState(false);
   const factory = embeddable.getEmbeddableFactory<DataDistributionInput>('vega_visualization');
   const paragraphRegistry = paragraphService?.getParagraphRegistry(
     DATA_DISTRIBUTION_PARAGRAPH_TYPE
@@ -74,24 +77,21 @@ export const DataDistributionContainer = ({
   }, [fieldComparison, source]);
 
   useEffect(() => {
-    (async () => {
-      if (
-        error ||
-        fieldComparison ||
-        fetchDataLoading ||
-        distributionLoading ||
-        !paragraph ||
-        paragraph.uiState?.isRunning
-      ) {
-        return;
-      }
+    if (
+      error ||
+      fieldComparison ||
+      fetchDataLoading ||
+      distributionLoading ||
+      !paragraph ||
+      paragraph.uiState?.isRunning
+    ) {
+      return;
+    }
 
-      await paragraphRegistry?.runParagraph({
-        paragraphState,
-        saveParagraph,
-        notebookStateValue: context.state.value,
-      });
-    })();
+    paragraphRegistry?.runParagraph({
+      paragraphState,
+      notebookStateValue: context.state.value,
+    });
   }, [
     paragraphRegistry,
     fieldComparison,
@@ -100,7 +100,6 @@ export const DataDistributionContainer = ({
     paragraph,
     error,
     paragraphState,
-    saveParagraph,
     context.state.value,
   ]);
 
@@ -117,7 +116,7 @@ export const DataDistributionContainer = ({
     };
   }, [dataDistributionSpecs, activePage]);
 
-  if (!context || !timeRange || !timeField || !index || !paragraphRegistry) {
+  if (!context || !timeRange || !timeField || !index || !paragraphRegistry || !paragraph) {
     return null;
   }
 
@@ -136,7 +135,7 @@ export const DataDistributionContainer = ({
       {i18n.translate('notebook.data.distribution.paragraph.subtitle', {
         defaultMessage: 'Visualization the values for key fields associated with the {source}',
         values: {
-          source: source === NoteBookSource.DISCOVER ? 'discover' : 'alert',
+          source: NoteBookSource.DISCOVER,
         },
       })}
     </EuiText>
@@ -164,40 +163,111 @@ export const DataDistributionContainer = ({
     </EuiPanel>
   );
 
+  const excludeButton = (chartIndex: number, isSelected: boolean) => {
+    return (
+      <div style={{ paddingLeft: '10px' }}>
+        <EuiToolTip content={isSelected ? 'Exclude from the results' : 'Select from the results'}>
+          <EuiSmallButtonIcon
+            iconType={isSelected ? 'crossInCircleEmpty' : 'checkInCircleEmpty'}
+            color="text"
+            style={{ height: '16px', width: '16px' }}
+            isDisabled={isUpdatingParagraph}
+            onClick={async () => {
+              try {
+                setIsUpdatingParagraph(true);
+
+                const updatedFieldComparison = [...fieldComparison];
+                updatedFieldComparison[chartIndex] = {
+                  ...fieldComparison[chartIndex],
+                  excludeFromContext: !isSelected,
+                };
+                await saveParagraph({
+                  paragraphStateValue: ParagraphState.updateOutputResult(paragraph, {
+                    fieldComparison: updatedFieldComparison || [],
+                  }),
+                });
+              } catch (err) {
+                notifications.toasts.addDanger(
+                  i18n.translate('notebook.data.distribution.paragraph.error', {
+                    defaultMessage: 'Error updating paragraph',
+                  })
+                );
+              } finally {
+                setIsUpdatingParagraph(false);
+              }
+            }}
+            aria-label={isSelected ? 'Exclude from the results' : 'Select from the results'}
+          />
+        </EuiToolTip>
+      </div>
+    );
+  };
+
+  const BASE_FLEX_ITEM_STYLE = { minHeight: 300, minWidth: 300 };
+  const MemoItem: React.FC<MemoItemProps> = React.memo(
+    ({ uniqueId, chartIndex, isSelected, spec }: MemoItemProps) => {
+      const itemStyle = useMemo(
+        () => ({
+          ...BASE_FLEX_ITEM_STYLE,
+          maxWidth: `${100 / ITEMS_PER_PAGE}%`,
+          opacity: isSelected ? 0.5 : 1,
+        }),
+        [isSelected]
+      );
+      return (
+        <EuiFlexItem grow={true} style={itemStyle}>
+          {factory && spec && (
+            <EmbeddableRenderer
+              factory={factory}
+              input={{
+                id: uniqueId,
+                savedObjectId: '',
+                visInput: { spec },
+              }}
+            />
+          )}
+          {excludeButton(chartIndex, isSelected)}
+        </EuiFlexItem>
+      );
+    }
+  ) as React.FC<MemoItemProps>;
+
   const specsVis = !fetchDataLoading && !distributionLoading && (
     <EuiPanel hasShadow={false} borderRadius="l">
-      <EuiFlexGroup>
-        {paginatedSpecs.map((spec, specIndex) => {
-          const uniqueKey = `${activePage * ITEMS_PER_PAGE + specIndex}`;
-          const uniqueId = `dis-id-${activePage * ITEMS_PER_PAGE + specIndex}`;
+      {paginatedSpecs.length ? (
+        <>
+          <EuiFlexGroup wrap responsive={false}>
+            {paginatedSpecs.map((spec, specIndex) => {
+              const uniqueId = `dis-id-${activePage * ITEMS_PER_PAGE + specIndex}`;
+              const chartIndex = activePage * ITEMS_PER_PAGE + specIndex;
+              const isSelected = !!fieldComparison[chartIndex].excludeFromContext;
 
-          return (
-            <EuiFlexItem grow={false} key={uniqueKey} style={{ height: 300, width: 300 }}>
-              {factory && spec && (
-                <EmbeddableRenderer
-                  factory={factory}
-                  input={{
-                    id: uniqueId,
-                    savedObjectId: '',
-                    visInput: { spec },
-                  }}
+              return (
+                <MemoItem
+                  key={uniqueId}
+                  uniqueId={uniqueId}
+                  chartIndex={chartIndex}
+                  isSelected={isSelected}
+                  spec={spec as any}
                 />
-              )}
-            </EuiFlexItem>
-          );
-        })}
-      </EuiFlexGroup>
-      <EuiSpacer size="m" />
-      {totalPages > 1 && (
-        <EuiFlexGroup justifyContent="center">
-          <EuiFlexItem grow={false}>
-            <EuiPagination
-              pageCount={totalPages}
-              activePage={activePage}
-              onPageClick={setActivePage}
-            />
-          </EuiFlexItem>
-        </EuiFlexGroup>
+              );
+            })}
+          </EuiFlexGroup>
+          <EuiSpacer size="m" />
+          {totalPages > 1 && (
+            <EuiFlexGroup justifyContent="center">
+              <EuiFlexItem grow={false}>
+                <EuiPagination
+                  pageCount={totalPages}
+                  activePage={activePage}
+                  onPageClick={setActivePage}
+                />
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          )}
+        </>
+      ) : (
+        <EuiEmptyPrompt iconType="database" title={<h2>No data distribution available</h2>} />
       )}
     </EuiPanel>
   );
@@ -215,9 +285,10 @@ export const DataDistributionContainer = ({
           {dataDistributionSpecs.map((spec, specIndex) => {
             const uniqueKey = `dis-modal-key-${specIndex}`;
             const uniqueId = `dis-modal-id-${specIndex}`;
+            const isSelected = !!fieldComparison[specIndex].excludeFromContext;
 
             return (
-              <EuiFlexItem key={uniqueKey} style={{ height: 300 }}>
+              <EuiFlexItem key={uniqueKey} style={{ opacity: isSelected ? 0.5 : 1, height: 300 }}>
                 {factory && spec && (
                   <EmbeddableRenderer
                     factory={factory}
@@ -228,6 +299,7 @@ export const DataDistributionContainer = ({
                     }}
                   />
                 )}
+                {excludeButton(specIndex, isSelected)}
               </EuiFlexItem>
             );
           })}

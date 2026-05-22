@@ -3,8 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { EuiDataGrid, EuiLoadingSpinner, EuiSpacer } from '@elastic/eui';
-import $ from 'jquery';
+import {
+  EuiDataGrid,
+  EuiModal,
+  EuiModalBody,
+  EuiModalHeader,
+  EuiModalHeaderTitle,
+  EuiButtonEmpty,
+} from '@elastic/eui';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 interface QueryDataGridProps {
@@ -22,8 +28,7 @@ function QueryDataGrid(props: QueryDataGridProps) {
   const { rowCount, queryColumns, dataValues } = props;
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
-
-  const [isVisible, setIsVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const onChangeItemsPerPage = useCallback(
     (pageSize) =>
@@ -55,41 +60,57 @@ function QueryDataGrid(props: QueryDataGridProps) {
   }, [queryColumns]);
 
   useEffect(() => {
-    if ($('.euiDataGrid__overflow').is(':visible')) {
-      setIsVisible(true);
-    }
-    setTimeout(() => {
-      if ($('.euiDataGrid__overflow').is(':visible')) {
-        setIsVisible(true);
-      }
-    }, 1000);
     setVisibleColumns(getUpdatedVisibleColumns());
   }, [getUpdatedVisibleColumns]);
 
-  const displayLoadingSpinner = !isVisible ? (
-    <>
-      <EuiLoadingSpinner size="xl" />
-      <EuiSpacer />
-    </>
-  ) : null;
+  const dataGridComponent = (
+    <EuiDataGrid
+      className="paraQueryDatagrid"
+      aria-label="Query datagrid"
+      columns={queryColumns}
+      columnVisibility={{ visibleColumns, setVisibleColumns }}
+      rowCount={rowCount}
+      renderCellValue={renderCellValue}
+      pagination={{
+        ...pagination,
+        pageSizeOptions: [10, 20, 50],
+        onChangeItemsPerPage,
+        onChangePage,
+      }}
+      toolbarVisibility={{
+        showFullScreenSelector: false,
+        ...(!isModalVisible && {
+          additionalControls: (
+            <EuiButtonEmpty
+              size="xs"
+              color="text"
+              onClick={() => setIsModalVisible(true)}
+              iconType="fullScreen"
+            >
+              Full screen
+            </EuiButtonEmpty>
+          ),
+        }),
+      }}
+    />
+  );
 
   return (
-    <div id="queryDataGrid">
-      {displayLoadingSpinner}
-      <EuiDataGrid
-        aria-label="Query datagrid"
-        columns={queryColumns}
-        columnVisibility={{ visibleColumns, setVisibleColumns }}
-        rowCount={rowCount}
-        renderCellValue={renderCellValue}
-        pagination={{
-          ...pagination,
-          pageSizeOptions: [10, 20, 50],
-          onChangeItemsPerPage,
-          onChangePage,
-        }}
-      />
-    </div>
+    <>
+      <div id="queryDataGrid">{dataGridComponent}</div>
+      {isModalVisible && (
+        <EuiModal
+          onClose={() => setIsModalVisible(false)}
+          maxWidth="90vw"
+          style={{ width: '90vw' }}
+        >
+          <EuiModalHeader>
+            <EuiModalHeaderTitle>Query Results</EuiModalHeaderTitle>
+          </EuiModalHeader>
+          <EuiModalBody>{dataGridComponent}</EuiModalBody>
+        </EuiModal>
+      )}
+    </>
   );
 }
 
